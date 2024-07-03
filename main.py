@@ -1,8 +1,27 @@
-import tkinter as tk
-from tkinter import simpledialog, messagebox
-import encryption as enc
+import subprocess
 import os
+import sys
 
+def install_and_import(package):
+    try:
+        __import__(package)
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        __import__(package)
+
+packages = ["bcrypt", "cryptography", "tkinter"]
+for package in packages:
+    install_and_import(package)
+
+import tkinter
+from tkinter import ttk
+from tkinter import messagebox
+from ttkthemes import ThemedTk
+
+try:
+    import encryption as enc
+except ImportError:
+    messagebox.showerror("Error", "encryption.py not found. Please make sure encryption.py is in the same directory as main.py")
 
 class EncryptionError(Exception):
     pass
@@ -12,7 +31,6 @@ class DecryptionError(Exception):
 
 class LoginError(Exception):
     pass
-
 
 class PasswordManagerApp:
     def __init__(self, root):
@@ -33,7 +51,16 @@ class PasswordManagerApp:
         for widget in self.root.winfo_children():
             widget.destroy()
 
-    def login(self):
+    def load_password(self, service):
+        try:
+            with open(f"vault/{service}.enc", "rb") as file:
+                encrypted_password = file.read()
+            decrypted_password = enc.decrypt_content(encrypted_password, self.key)
+            return decrypted_password
+        except FileNotFoundError:
+            return None
+
+    def login(self, event=None):
         password = self.password_entry.get()
         if enc.verify_password(password):
             self.key = enc.derive_fernet_key_from_password(password)
@@ -41,9 +68,9 @@ class PasswordManagerApp:
         else:
             messagebox.showerror("Error", "Invalid master password")
 
-    def sign_up(self):
-        password = self.password_entry.get()
-        confirm_password = simpledialog.askstring("Confirm Password", "Re-enter master password:", show="*")
+    def sign_up(self, event=None):
+        password = self.master_password_entry.get()
+        confirm_password = self.confirm_password_entry.get()
 
         if password == confirm_password:
             enc.setup_master_password(password)
@@ -54,43 +81,72 @@ class PasswordManagerApp:
                 if not sure:
                     return
                 for file in os.listdir("vault"):
-                    os.remove(f"vault/{file}")                    
+                    os.remove(f"vault/{file}")
             self.clear_screen()
-            messagebox.showinfo("Success", "Sign up successful!")
             self.show_main_screen()
         else:
             messagebox.showerror("Error", "Passwords do not match")
 
+    def adjust_window_size(self):
+        self.root.update_idletasks()
+        window_width = self.root.winfo_reqwidth()
+        window_height = self.root.winfo_reqheight()
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        window_width += 50
+        window_height += 50
+        x = (screen_width / 2) - (window_width / 2)
+        y = (screen_height / 2) - (window_height / 2)
+        self.root.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
+
     def show_initial_screen(self):
         self.clear_screen()
+        self.root.bind("<Escape>", lambda _: self.root.destroy())
 
-        tk.Label(self.root, text="Master Password:").pack(pady=10)
-        self.password_entry = tk.Entry(self.root, show="*")
-        self.password_entry.pack(pady=5)
-        self.password_entry.focus_set()
 
         key_present = self.check_key_presence()
         if key_present:
-            tk.Button(self.root, text="Login", command=self.login).pack(pady=5)
-            self.password_entry.bind("<Return>", lambda _: self.login())
+            ttk.Label(self.root, text="Master Password:").pack(pady=10)
+            self.password_entry = ttk.Entry(self.root)
+            self.password_entry.pack(pady=5)
+            self.password_entry.focus_set()
+            login_button = ttk.Button(self.root, text="Login", command=self.login)
+            login_button.pack(pady=5)
+            login_button.bind("<Return>", lambda _: self.login())
+            self.password_entry.bind("<Return>", self.login)
+            self.root.bind_class("Button", "<Return>", lambda event: event.widget.invoke())
         else:
-            tk.Button(self.root, text="Sign Up", command=self.sign_up).pack(pady=5)
-            tk.Label(self.root, text="No master password found. Please sign up or upload secret.key and salt.bin to the root directory of the project").pack(pady=5)
-            self.password_entry.bind("<Return>", lambda _: self.sign_up())
+            ttk.Label(self.root, text="Enter Master Password:").pack(pady=5)
+            self.master_password_entry = ttk.Entry(self.root)
+            self.master_password_entry.pack(pady=5)
+            ttk.Label(self.root, text="Confirm Master Password:").pack(pady=5)
+            self.confirm_password_entry = ttk.Entry(self.root)
+            self.confirm_password_entry.pack(pady=5)
+
+            sign_up_button = ttk.Button(self.root, text="Sign Up", command=self.sign_up)
+            sign_up_button.pack(pady=5)
+            sign_up_button.bind("<Return>", lambda _: self.sign_up())
+            self.master_password_entry.bind("<Return>", self.sign_up)
+            self.confirm_password_entry.bind("<Return>", self.sign_up)
 
     def show_main_screen(self):
         self.clear_screen()
 
-        tk.Label(self.root, text="Password Manager").pack(pady=10)
+        ttk.Label(self.root, text="Password Manager").pack(pady=10)
 
-        self.password_display = tk.Frame(self.root)
+        self.password_display = ttk.Frame(self.root)
         self.password_display.pack(pady=5)
 
-        tk.Button(self.root, text="Add password", command=self.show_add_password_dialog).pack(pady=5)
-        tk.Button(self.root, text="Change Master Password", command=self.show_change_master_password).pack(pady=5)
-
+        add_password_button = ttk.Button(self.root, text="Add password", command=self.show_password_setter)
+        add_password_button.pack(pady=5)
+        add_password_button.bind("<Return>", lambda _: add_password_button.invoke())
+        change_master_password_button = ttk.Button(self.root, text="Change Master Password", command=self.show_change_master_password)
+        change_master_password_button.pack(pady=5)
+        change_master_password_button.bind("<Return>", lambda _: change_master_password_button.invoke())
+        
         self.update_password_display()
-
+        self.adjust_window_size()
+    
     def update_password_display(self):
         def copy_password(password):
             self.root.clipboard_clear()
@@ -102,70 +158,117 @@ class PasswordManagerApp:
         for file in os.listdir("vault"):
             service = file.split(".")[0]
             password = self.load_password(service)
-            frame = tk.Frame(self.password_display)
+            frame = ttk.Frame(self.password_display)
             frame.pack(fill='x', pady=2)
-            tk.Label(frame, text=f"{service}: {password}", anchor='w').pack(side='left', fill='x', expand=True)
-            tk.Button(frame, text="Delete", command=lambda s=service: self.delete_password(s)).pack(side='right')
-            tk.Button(frame, text="Change", command=lambda s=service: self.change_password(s)).pack(side='right')
-            tk.Button(frame, text="Copy", command=lambda p=password: copy_password(p)).pack(side='right')
+            ttk.Label(frame, text=f"{service}: {password}", anchor='w').pack(side='left', fill='x', expand=True)
+            copy_button = ttk.Button(frame, text="Copy", command=lambda p=password: copy_password(p))
+            copy_button.pack(side='left')
+            copy_button.bind("<Return>", lambda _: copy_button.invoke())
 
-    def show_add_password_dialog(self):
-        password_window = tk.Toplevel(self.root)
+            change_button = ttk.Button(frame, text="Change", command=lambda s=service, p=password: self.show_password_setter(service=s, password=p))
+            change_button.pack(side='left')
+            change_button.bind("<Return>", lambda _: change_button.invoke())
+
+            delete_button = ttk.Button(frame, text="Delete", command=lambda s=service: self.delete_password(s))
+            delete_button.pack(side='left')
+            delete_button.bind("<Return>", lambda _: delete_button.invoke())
+
+    def show_password_setter(self, service=None, password=None):
+        change_mode = service is not None and password is not None
+        original_service = service
+        
+        password_window = tkinter.Toplevel(self.root)
         password_window.title("Add Password")
+        password_window.bind("<Escape>", lambda _: password_window.destroy())
+        password_window.geometry("300x200")
 
-        tk.Label(password_window, text="Enter Service:").pack(pady=10)
-        service_entry = tk.Entry(password_window)
+        ttk.Label(password_window, text="Enter Service:").pack(pady=10)
+        service_entry = ttk.Entry(password_window)
         service_entry.pack(pady=5)
         service_entry.focus_set()
+        service_entry.bind("<Return>", lambda _: submit_password())
+        if service:
+            service_entry.insert(0, service)
 
-        tk.Label(password_window, text="Enter Password:").pack(pady=10)
-        password_entry = tk.Entry(password_window, show="*")
+        ttk.Label(password_window, text="Enter Password:").pack(pady=10)
+        password_entry = ttk.Entry(password_window)
         password_entry.pack(pady=5)
         password_entry.bind("<Return>", lambda _: submit_password())
+        if password:
+            password_entry.insert(0, password)
 
         def submit_password():
             service = service_entry.get()
             password = password_entry.get()
-            self.save_password(service, password)
-            messagebox.showinfo("Success", "Password saved successfully!")
+            if not service or not password:
+                messagebox.showerror("Error", "Service and password cannot be empty")
+                return
+            if change_mode:
+                self.save_password(original_service, password, True, None, service)
+            else:
+                self.save_password(service, password)
             password_window.destroy()
             self.update_password_display()
 
-        tk.Button(password_window, text="Save password", command=submit_password).pack(pady=10)
+        save_button = ttk.Button(password_window, text="Save", command=submit_password)
+        save_button.pack(pady=10)
+        save_button.bind("<Return>", lambda _: submit_password())
+
+        password_window.bind("<Escape>", lambda _: password_window.destroy())
 
     def change_password(self, service):
-        new_password = simpledialog.askstring("Change Password", f"Enter new password for {service}:", show="*")
-        if new_password:
-            self.save_password(service, new_password, True)
-            messagebox.showinfo("Success", "Password changed successfully!")
-            self.update_password_display()
-    
+        change_password_window = tkinter.Toplevel(self.root)
+        change_password_window.title("Change Password")
+        change_password_window.bind("<Escape>", lambda _: change_password_window.destroy())
+        change_password_window.geometry("300x200")
+
+        def change_password():
+            new_password = new_password_entry.get()
+            if new_password:
+                self.save_password(service, new_password, True)
+                change_password_window.destroy()
+                self.update_password_display()
+            else:
+                messagebox.showerror("Error", "Password cannot be empty")
+
+        ttk.Label(change_password_window, text=f"Enter new password for {service}:").pack(pady=10)
+        new_password_entry = ttk.Entry(change_password_window)
+        new_password_entry.pack(pady=5)
+        new_password_entry.focus_set()
+        new_password_entry.bind("<Return>", lambda _: change_password())
+
+        change_password_button = ttk.Button(change_password_window, text="Change password", command=change_password)
+        change_password_button.pack(pady=10)
+        change_password_button.bind("<Return>", lambda _: change_password())
+
     def delete_password(self, service):
         sure = messagebox.askyesno("Are you sure?", f"Are you sure you want to delete the password for {service}?")
         if sure:
             os.remove(f"vault/{service}.enc")
-            messagebox.showinfo("Success", "Password deleted successfully!")
             self.update_password_display()
+            self.adjust_window_size()
 
     def show_change_master_password(self):
-        change_window = tk.Toplevel(self.root)
+        change_window = tkinter.Toplevel(self.root)
         change_window.title("Change Master Password")
+        change_window.bind("<Escape>", lambda _: change_window.destroy())
+        change_window.geometry("300x300")
 
-        tk.Label(change_window, text="Old master password:").pack(pady=10)
-        old_password_entry = tk.Entry(change_window, show="*")
+        ttk.Label(change_window, text="Old master password:").pack(pady=10)
+        old_password_entry = ttk.Entry(change_window)
         old_password_entry.pack(pady=5)
         old_password_entry.focus_set()
 
-        tk.Label(change_window, text="New master password:").pack(pady=10)
-        new_password_entry = tk.Entry(change_window, show="*")
+        ttk.Label(change_window, text="New master password:").pack(pady=10)
+        new_password_entry = ttk.Entry(change_window)
         new_password_entry.pack(pady=5)
 
-        tk.Label(change_window, text="Confirm new master password:").pack(pady=10)
-        confirm_password_entry = tk.Entry(change_window, show="*")
+        ttk.Label(change_window, text="Confirm new master password:").pack(pady=10)
+        confirm_password_entry = ttk.Entry(change_window)
         confirm_password_entry.pack(pady=5)
-        confirm_password_entry.bind("<Return>", lambda _: change_password())
+        confirm_password_entry.bind("<Return>", lambda _: change_master_password())
 
-        def change_password():
+        def change_master_password():
             old_password = old_password_entry.get()
             if not enc.verify_password(old_password):
                 messagebox.showerror("Error", "Invalid old master password")
@@ -175,13 +278,13 @@ class PasswordManagerApp:
             if not new_password:
                 messagebox.showerror("Error", "New master password cannot be empty")
                 return
-            
+
             if new_password == confirm_password:
                 sure = messagebox.askyesno("Are you sure?", "Are you sure you want to change the master password?")
                 if not sure:
                     change_window.destroy()
                     return
-                
+
                 new_key = enc.setup_master_password(new_password)
 
                 # encrypt current passwords with new key
@@ -189,57 +292,55 @@ class PasswordManagerApp:
                     service = file.split(".")[0]
                     password = self.load_password(service)
                     self.save_password(service, password, True, new_key)
-                
+
                 self.key = new_key
-                messagebox.showinfo("Success", "Master password changed successfully!")
                 change_window.destroy()
             else:
                 messagebox.showerror("Error", "Passwords do not match")
 
-        tk.Button(change_window, text="Change password", command=change_password).pack(pady=10)
+        change_password_button = ttk.Button(change_window, text="Change password", command=change_master_password)
+        change_password_button.pack(pady=10)
+        change_password_button.bind("<Return>", lambda _: change_master_password())
 
-    def save_password(self, service, password, overwrite=False, prefered_key=None):
-        # check if vault directory exists
+    def save_password(self, service, password, overwrite=False, prefered_key=None, rename_service_to=None):
         if not os.path.exists("vault"):
             os.mkdir("vault")
 
-        # check if service already exists
         if os.path.exists(f"vault/{service}.enc") and not overwrite:
-            # ask user if they want to overwrite
             overwrite = messagebox.askyesno("Overwrite", f"Password for {service} already exists. Do you want to overwrite it?")
             if not overwrite:
                 return
+        
+        if rename_service_to:
+            os.rename(f"vault/{service}.enc", f"vault/{rename_service_to}.enc")
+            service = rename_service_to
+
         if prefered_key:
             encrypted_password = enc.encrypt_content(str(password), prefered_key)
             with open(f"vault/{service}.enc", "wb") as file:
                 file.write(encrypted_password)
             return
+        
         encrypted_password = enc.encrypt_content(str(password), self.key)
         with open(f"vault/{service}.enc", "wb") as file:
             file.write(encrypted_password)
-
-    def load_password(self, service):
-        try:
-            with open(f"vault/{service}.enc", "rb") as file:
-                encrypted_password = file.read()
-            decrypted_password = enc.decrypt_content(encrypted_password, self.key)
-            return decrypted_password
-        except FileNotFoundError:
-            return None
-
+        
+        self.update_password_display()
+        self.adjust_window_size()
 
 def main():
-    root = tk.Tk()
+    root = ThemedTk(theme="arc")
     PasswordManagerApp(root)
-    window_width = 600
-    window_height = 400
+    window_width = 300
+    window_height = 200
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     x = (screen_width / 2) - (window_width / 2)
     y = (screen_height / 2) - (window_height / 2)
     root.geometry(f"{window_width}x{window_height}+{int(x)}+{int(y)}")
+    root.lift()
+    # root.iconphoto(False, tkinter.PhotoImage(file="icon.png"))
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
