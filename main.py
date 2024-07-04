@@ -107,7 +107,7 @@ class PasswordManagerApp:
         key_present = self.check_key_presence()
         if key_present:
             ttk.Label(self.root, text="Master Password:").pack(pady=10)
-            self.password_entry = ttk.Entry(self.root)
+            self.password_entry = ttk.Entry(self.root, show="*")
             self.password_entry.pack(pady=5)
             self.password_entry.focus_set()
             login_button = ttk.Button(self.root, text="Login", command=self.login)
@@ -116,11 +116,11 @@ class PasswordManagerApp:
             self.password_entry.bind("<Return>", self.login)
             self.root.bind_class("Button", "<Return>", lambda event: event.widget.invoke())
         else:
-            ttk.Label(self.root, text="Enter Master Password:").pack(pady=5)
-            self.master_password_entry = ttk.Entry(self.root)
+            ttk.Label(self.root, text="Choose Master Password:").pack(pady=5)
+            self.master_password_entry = ttk.Entry(self.root, show="*")
             self.master_password_entry.pack(pady=5)
             ttk.Label(self.root, text="Confirm Master Password:").pack(pady=5)
-            self.confirm_password_entry = ttk.Entry(self.root)
+            self.confirm_password_entry = ttk.Entry(self.root, show="*")
             self.confirm_password_entry.pack(pady=5)
 
             sign_up_button = ttk.Button(self.root, text="Sign Up", command=self.sign_up)
@@ -130,9 +130,30 @@ class PasswordManagerApp:
             self.confirm_password_entry.bind("<Return>", self.sign_up)
 
     def show_main_screen(self):
+        self.current_order = False
+        def toggle_sort_order():
+                self.current_order = not self.current_order
+                # Update the button's text based on the current order
+                self.sort_button.config(text="▲" if self.current_order else "▼")
+                self.update_password_display(sort=sort_dropdown.get(), ascending=self.current_order)
         self.clear_screen()
 
         ttk.Label(self.root, text="Password Manager").pack(pady=10)
+
+        sort_frame = ttk.Frame(self.root)
+        sort_frame.pack(pady=5)
+
+        ttk.Label(sort_frame, text="Sort:").pack(side='left')
+        
+        sort_dropdown = ttk.Combobox(sort_frame, values=["Date", "Name"], state="readonly")
+        sort_dropdown.current(0)
+        sort_dropdown.pack(side='left')
+        sort_dropdown.bind("<<ComboboxSelected>>", lambda _: self.update_password_display(sort=sort_dropdown.get()))
+
+        self.sort_button = ttk.Button(sort_frame, text="▼", command=toggle_sort_order)
+
+        self.sort_button.pack(side='left')
+        self.sort_button.bind("<Return>", lambda _: self.sort_button.invoke())
 
         self.password_display = ttk.Frame(self.root)
         self.password_display.pack(pady=5)
@@ -147,15 +168,27 @@ class PasswordManagerApp:
         self.update_password_display()
         self.adjust_window_size()
     
-    def update_password_display(self):
+    def update_password_display(self, sort="Date", ascending=False):
         def copy_password(password):
             self.root.clipboard_clear()
             self.root.clipboard_append(password)
             self.root.update()
+
+        def get_sorted_files():
+            if not os.path.exists("vault"):
+                os.mkdir("vault")
+            files = os.listdir("vault")
+            if sort == "Date":
+                files.sort(key=lambda x: os.path.getmtime(f"vault/{x}"), reverse=not ascending)
+            elif sort == "Name":
+                files.sort(key=lambda x: x.lower())
+                if not ascending: files.reverse()
+            return files
+
         for widget in self.password_display.winfo_children():
             widget.destroy()
 
-        for file in os.listdir("vault"):
+        for file in get_sorted_files():
             service = file.split(".")[0]
             password = self.load_password(service)
             frame = ttk.Frame(self.password_display)
@@ -180,10 +213,10 @@ class PasswordManagerApp:
         password_window = tkinter.Toplevel(self.root)
         password_window.title("Add Password")
         password_window.bind("<Escape>", lambda _: password_window.destroy())
-        password_window.geometry("300x200")
+        password_window.geometry("400x200")
 
         ttk.Label(password_window, text="Enter Service:").pack(pady=10)
-        service_entry = ttk.Entry(password_window)
+        service_entry = ttk.Entry(password_window, width=30)
         service_entry.pack(pady=5)
         service_entry.focus_set()
         service_entry.bind("<Return>", lambda _: submit_password())
@@ -191,7 +224,7 @@ class PasswordManagerApp:
             service_entry.insert(0, service)
 
         ttk.Label(password_window, text="Enter Password:").pack(pady=10)
-        password_entry = ttk.Entry(password_window)
+        password_entry = ttk.Entry(password_window, width=50)
         password_entry.pack(pady=5)
         password_entry.bind("<Return>", lambda _: submit_password())
         if password:
@@ -216,31 +249,6 @@ class PasswordManagerApp:
 
         password_window.bind("<Escape>", lambda _: password_window.destroy())
 
-    def change_password(self, service):
-        change_password_window = tkinter.Toplevel(self.root)
-        change_password_window.title("Change Password")
-        change_password_window.bind("<Escape>", lambda _: change_password_window.destroy())
-        change_password_window.geometry("300x200")
-
-        def change_password():
-            new_password = new_password_entry.get()
-            if new_password:
-                self.save_password(service, new_password, True)
-                change_password_window.destroy()
-                self.update_password_display()
-            else:
-                messagebox.showerror("Error", "Password cannot be empty")
-
-        ttk.Label(change_password_window, text=f"Enter new password for {service}:").pack(pady=10)
-        new_password_entry = ttk.Entry(change_password_window)
-        new_password_entry.pack(pady=5)
-        new_password_entry.focus_set()
-        new_password_entry.bind("<Return>", lambda _: change_password())
-
-        change_password_button = ttk.Button(change_password_window, text="Change password", command=change_password)
-        change_password_button.pack(pady=10)
-        change_password_button.bind("<Return>", lambda _: change_password())
-
     def delete_password(self, service):
         sure = messagebox.askyesno("Are you sure?", f"Are you sure you want to delete the password for {service}?")
         if sure:
@@ -252,19 +260,19 @@ class PasswordManagerApp:
         change_window = tkinter.Toplevel(self.root)
         change_window.title("Change Master Password")
         change_window.bind("<Escape>", lambda _: change_window.destroy())
-        change_window.geometry("300x300")
+        change_window.geometry("400x300")
 
         ttk.Label(change_window, text="Old master password:").pack(pady=10)
-        old_password_entry = ttk.Entry(change_window)
+        old_password_entry = ttk.Entry(change_window, width=50)
         old_password_entry.pack(pady=5)
         old_password_entry.focus_set()
 
         ttk.Label(change_window, text="New master password:").pack(pady=10)
-        new_password_entry = ttk.Entry(change_window)
+        new_password_entry = ttk.Entry(change_window, width=50)
         new_password_entry.pack(pady=5)
 
         ttk.Label(change_window, text="Confirm new master password:").pack(pady=10)
-        confirm_password_entry = ttk.Entry(change_window)
+        confirm_password_entry = ttk.Entry(change_window, width=50)
         confirm_password_entry.pack(pady=5)
         confirm_password_entry.bind("<Return>", lambda _: change_master_password())
 
