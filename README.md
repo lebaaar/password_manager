@@ -29,7 +29,15 @@ This application uses `cryptography`'s Fernet for secure encryption and decrypti
 
 
 ## Gallery
-![Login screen](images/login.png)
-![Sign up screen](images/signup.png)
-![App screen](images/app.png)
-![App screen](images/app2.png)
+<p align="center">
+  <img src="images/login.png" alt="Login screen">
+</p>
+<p align="center">
+  <img src="images/signup.png" alt="Sign up screen">
+</p>
+<p align="center">
+  <img src="images/app.png" alt="App screen">
+</p>
+<p align="center">
+  <img src="images/app2.png" alt="App screen">
+</p>
