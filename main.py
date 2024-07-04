@@ -211,7 +211,10 @@ class PasswordManagerApp:
         original_service = service
         
         password_window = tkinter.Toplevel(self.root)
-        password_window.title("Add Password")
+        if change_mode:
+            password_window.title("Change Password")
+        else:
+            password_window.title("Add Password")
         password_window.bind("<Escape>", lambda _: password_window.destroy())
         password_window.geometry("400x200")
 
