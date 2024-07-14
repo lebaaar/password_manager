@@ -176,7 +176,6 @@ class PasswordManagerApp:
         categories.remove(category)
         with open("categories.json", "w") as file:
             json.dump(categories, file)
-            
 
     def rename_category(self, old_category, new_category):
         categories = self.get_categories()
@@ -192,38 +191,6 @@ class PasswordManagerApp:
         else:
             messagebox.showerror("Error", "Category does not exist")
             return False
-
-    # UI management
-    def on_app_destroy(self):
-        settings = self.get_settings()
-        if not settings["store_key"]:
-            enc.remove_key()
-
-    def clear_screen(self):
-        for widget in self.root.winfo_children():
-            widget.destroy()
-
-    def adjust_window_size(self, window=None):
-        target_window = self.root if window is None else window
-        target_window.update_idletasks()
-        window_width = target_window.winfo_reqwidth()
-        window_height = target_window.winfo_reqheight()
-        screen_width = target_window.winfo_screenwidth()
-        screen_height = target_window.winfo_screenheight()
-        window_width += 50 
-        window_height += 50 
-        x = (screen_width / 2) - (window_width / 2)
-        y = (screen_height / 2) - (window_height / 2)
-        target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
-
-    def on_manage_categories_window_close(self, setter_x, setter_y, service=None, password=None, username=None, email=None, category=None, notes=None):
-        self.window_position = (setter_x, setter_y)
-        self.manage_categories_window.destroy()
-        try: 
-            self.password_window.destroy()
-        except:
-            pass
-        self.show_password_setter(service=service, password=password, username=username, email=email, category=category, notes=notes)
 
     # Service management
     def get_all_service_content(self, order=None, ascending=False):
@@ -329,6 +296,38 @@ class PasswordManagerApp:
         if store_key is not None:
             with open("settings.json", "w") as file:
                 json.dump({"store_key": store_key}, file)
+
+    # UI management
+    def on_app_destroy(self):
+        settings = self.get_settings()
+        if not settings["store_key"]:
+            enc.remove_key()
+
+    def clear_screen(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+    def adjust_window_size(self, window=None):
+        target_window = self.root if window is None else window
+        target_window.update_idletasks()
+        window_width = target_window.winfo_reqwidth()
+        window_height = target_window.winfo_reqheight()
+        screen_width = target_window.winfo_screenwidth()
+        screen_height = target_window.winfo_screenheight()
+        window_width += 50 
+        window_height += 50 
+        x = (screen_width / 2) - (window_width / 2)
+        y = (screen_height / 2) - (window_height / 2)
+        target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
+
+    def on_manage_categories_window_close(self, setter_x, setter_y, service=None, password=None, username=None, email=None, category=None, notes=None):
+        self.window_position = (setter_x, setter_y)
+        self.manage_categories_window.destroy()
+        try: 
+            self.password_window.destroy()
+        except:
+            pass
+        self.show_password_setter(service=service, password=password, username=username, email=email, category=category, notes=notes)
 
     # Screens
     def show_initial_screen(self, account_exists=None):
