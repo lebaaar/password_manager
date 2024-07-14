@@ -40,12 +40,23 @@ class PasswordManagerApp:
         self.root = root
         self.root.title("Password Manager")
         self.key = None
+
+        # Tracking open winows
+        self.root_window_open = False
+        self.password_setter_window_open = False
+        self.manage_categories_window_open = False
+        self.rename_category_window_open = False
+        self.change_master_password_window_open = False
+
         self.show_initial_screen(
             self.check_key_presence() or 
             self.chcek_known_value_presence()
         )
         self.ensure_files()
 
+
+
+    # File management
     def validate_json(self, file_path):
         try:
             with open(file_path, "r") as file:
@@ -84,6 +95,8 @@ class PasswordManagerApp:
             if not self.validate_json(vault_file_path):
                 with open(vault_file_path, "w") as file:
                     file.write("{}")
+
+
 
     # Auth management
     def check_key_presence(self):
@@ -145,6 +158,8 @@ class PasswordManagerApp:
         else:
             messagebox.showerror("Error", "Passwords do not match")
 
+
+
     # Categoy management
     def get_categories(self):
         with open("categories.json", "r") as file:
@@ -170,7 +185,7 @@ class PasswordManagerApp:
             vault = json.load(file)
         for _, content in vault.items():
             if content["category"] == category:
-                messagebox.showerror("Error", "Category is in use")
+                messagebox.showerror("Error", "Category is in use, cannot delete")
                 return
         
         categories.remove(category)
@@ -191,6 +206,8 @@ class PasswordManagerApp:
         else:
             messagebox.showerror("Error", "Category does not exist")
             return False
+
+
 
     # Service management
     def get_all_service_content(self, order=None, ascending=False):
@@ -238,7 +255,7 @@ class PasswordManagerApp:
             vault = json.load(file)
 
         if not overwrite and service in vault:
-            overwrite = messagebox.askyesno("Overwrite", f"Password for {service} already exists. Do you want to overwrite it?")
+            overwrite = messagebox.askyesno("Overwrite", f"Content for {service} already exists. Do you want to overwrite it?")
             if not overwrite:
                 return
         
@@ -287,6 +304,8 @@ class PasswordManagerApp:
         else:
             messagebox.showerror("Error", f"No content to match {service}")
 
+
+
     # Settings management
     def get_settings(self):
         with open("settings.json", "r") as file:
@@ -297,221 +316,10 @@ class PasswordManagerApp:
             with open("settings.json", "w") as file:
                 json.dump({"store_key": store_key}, file)
 
+
+
     # UI management
-    def on_app_destroy(self):
-        settings = self.get_settings()
-        if not settings["store_key"]:
-            enc.remove_key()
-
-    def clear_screen(self):
-        for widget in self.root.winfo_children():
-            widget.destroy()
-
-    def adjust_window_size(self, window=None):
-        target_window = self.root if window is None else window
-        target_window.update_idletasks()
-        window_width = target_window.winfo_reqwidth()
-        window_height = target_window.winfo_reqheight()
-        screen_width = target_window.winfo_screenwidth()
-        screen_height = target_window.winfo_screenheight()
-        window_width += 50 
-        window_height += 50 
-        x = (screen_width / 2) - (window_width / 2)
-        y = (screen_height / 2) - (window_height / 2)
-        target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
-
-    def on_manage_categories_window_close(self, setter_x, setter_y, service=None, password=None, username=None, email=None, category=None, notes=None):
-        self.window_position = (setter_x, setter_y)
-        self.manage_categories_window.destroy()
-        try: 
-            self.password_window.destroy()
-        except:
-            pass
-        self.show_password_setter(service=service, password=password, username=username, email=email, category=category, notes=notes)
-
-    # Screens
-    def show_initial_screen(self, account_exists=None):
-        def sign_up_event(store_key, ask_conformation=True):
-            # Check if passwords are empty
-            if not self.master_password_entry.get() or not self.confirm_password_entry.get():
-                messagebox.showerror("Error", "Master password cannot be empty")
-                return
-            
-            # Check if passwords match
-            if self.master_password_entry.get() != self.confirm_password_entry.get():
-                messagebox.showerror("Error", "Passwords do not match")
-                return
-
-            # Check if any passwords exist
-            if ask_conformation:
-                with open("vault.json", "r") as file:
-                    vault = json.load(file)
-                if vault:
-                    sure = messagebox.askyesno("Are you sure?", "Are you sure you want to create a new account? Some passwords are already stored, which  will be lost if you proceed.")
-                    if not sure:
-                        return
-
-            # Update settings and sign up
-            self.update_settings(store_key=self.store_key_var_init.get())
-            self.sign_up(store_key=store_key)
-
-        def store_key_toggle_init():
-            self.store_key_var_init.set(not self.store_key_var_init.get())
-
-        self.clear_screen()
-        self.root.bind("<Escape>", lambda _: self.root.destroy())
- 
-        secret_key_exists = self.check_key_presence()
-        known_value_exists = self.chcek_known_value_presence()
-        if account_exists is None:
-            account_exists = secret_key_exists or known_value_exists
-
-        if account_exists:
-            # Display login screen
-            ttk.Label(self.root, text="Master Password:").pack(pady=10)
-            self.password_entry = ttk.Entry(self.root, show="*")
-            self.password_entry.pack(pady=5)
-            self.password_entry.focus_set()
-
-            # Login button
-            login_button = ttk.Button(self.root, text="Login", command= lambda: self.login(store_key=secret_key_exists))
-            login_button.pack(pady=5)
-            login_button.bind("<Return>", lambda _: self.login(store_key=secret_key_exists))
-            self.password_entry.bind("<Return>", lambda _: self.login(store_key=secret_key_exists))
-            self.root.bind_class("Button", "<Return>", lambda event: event.widget.invoke())
-
-            # Sign up button
-            sign_up_button = ttk.Button(
-                self.root, text="Sign Up", 
-                command=lambda: self.show_initial_screen(account_exists=False),
-            )
-            sign_up_button.pack(side="bottom", pady=5)
-            sign_up_button.bind("<Return>", lambda _: self.show_initial_screen(account_exists=False))
-        else:
-            # Display sign up screen
-            # Master password
-            ttk.Label(self.root, text="Choose Master Password:").pack(pady=5)
-            self.master_password_entry = ttk.Entry(self.root, show="*")
-            self.master_password_entry.pack(pady=5)
-            self.master_password_entry.focus_set()
-            self.master_password_entry.bind("<Return>", lambda _: self.confirm_password_entry.focus_set())
-            
-            # Confirm master password
-            ttk.Label(self.root, text="Confirm Master Password:").pack(pady=5)
-            self.confirm_password_entry = ttk.Entry(self.root, show="*")
-            self.confirm_password_entry.pack(pady=5)
-            self.confirm_password_entry.bind(
-                "<Return>",
-                lambda _: sign_up_event(store_key=self.store_key_var_init.get(), ask_conformation=secret_key_exists or known_value_exists)
-            )
-
-            # Store key checkbox
-            self.store_key_var_init = tkinter.BooleanVar()
-            self.store_key_var_init.set(False)
-            store_key_checkbox = ttk.Checkbutton(
-                self.root, text="Store key after closing", 
-                variable=self.store_key_var_init,
-            )
-            store_key_checkbox.pack(pady=5)
-            store_key_checkbox.bind("<Return>", lambda _: store_key_toggle_init())
-
-            # Sign up button
-            sign_up_button = ttk.Button(
-                self.root, 
-                text="Sign Up", 
-                command=lambda: sign_up_event(store_key=self.store_key_var_init.get(), ask_conformation=secret_key_exists or known_value_exists)
-            )
-            sign_up_button.pack(pady=5)
-            sign_up_button.bind(
-                "<Return>", 
-                lambda _: sign_up_event(store_key=self.store_key_var_init.get(), ask_conformation=secret_key_exists or known_value_exists)
-            )
-
-            # Login button
-            login_button = ttk.Button(
-                self.root, text="Login",
-                command=lambda: self.show_initial_screen(account_exists=True)
-            )
-            login_button.pack(side="bottom", pady=5)
-            login_button.bind("<Return>", lambda _: self.show_initial_screen(account_exists=True))
-            if not secret_key_exists and not known_value_exists:
-                login_button.config(state="disabled")
-
-    def show_main_screen(self):
-        self.current_order = False
-        def toggle_sort_order():
-                self.current_order = not self.current_order
-                # Update the button"s text based on the current order
-                self.sort_button.config(text="▲" if self.current_order else "▼")
-                self.update_password_display(sort=sort_dropdown.get(), ascending=self.current_order)
-        
-        def store_key_toggle():
-            self.store_key_var.set(not self.store_key_var.get())
-            self.update_settings(store_key=self.store_key_var.get())
-        
-        self.clear_screen()
-
-        # Left side
-        left_frame = ttk.Frame(self.root)
-        left_frame.pack(side="left", fill="y", padx=5)
-
-        # Search option
-        search_frame = ttk.Frame(left_frame)
-        search_frame.pack(pady=5)
-        ttk.Label(search_frame, text="Search: ").pack(side="left")
-        search_entry = ttk.Entry(search_frame, width=15)
-        search_entry.pack(side="left")
-        search_entry.bind("<Return>", lambda _: search_button.invoke())
-        search_button = ttk.Button(search_frame, text="Search", command=lambda: self.update_password_display(search_query=search_entry.get()))
-        search_button.pack(side="left")
-        search_button.bind("<Return>", lambda _: search_button.invoke())
-
-        # Sort options
-        sort_frame = ttk.Frame(left_frame)
-        sort_frame.pack(pady=5)
-        ttk.Label(sort_frame, text="Sort:").pack(side="left")
-        sort_dropdown = ttk.Combobox(sort_frame, values=["Date", "Name", "Category"], state="readonly", width=10)
-        sort_dropdown.current(0)
-        sort_dropdown.pack(side="left")
-        sort_dropdown.bind("<<ComboboxSelected>>", lambda _: self.update_password_display(sort=sort_dropdown.get()))
-        self.sort_button = ttk.Button(sort_frame, text="▼", command=toggle_sort_order, width=2)
-        self.sort_button.pack(side="left")
-        self.sort_button.bind("<Return>", lambda _: self.sort_button.invoke())
-
-        # Store key after closing radio
-        settings = self.get_settings()
-        self.store_key_var = tkinter.BooleanVar()
-        self.store_key_var.set(settings["store_key"])
-        self.store_key_checkbox = ttk.Checkbutton(
-            left_frame, text="Store key after closing", 
-            variable=self.store_key_var, 
-            command=lambda: self.update_settings(store_key=self.store_key_var.get()))
-        self.store_key_checkbox.pack(pady=5)
-        self.store_key_checkbox.bind("<Return>", lambda _: store_key_toggle())
-
-        # Change master password button
-        change_master_password_button = ttk.Button(left_frame, text="Change Master Password", command=self.show_change_master_password)
-        change_master_password_button.pack(pady=5)
-        change_master_password_button.bind("<Return>", lambda _: change_master_password_button.invoke())
-
-        # Right side
-        right_frame = ttk.Frame(self.root)
-        right_frame.pack(side="right", fill="y", padx=5)
-
-        # Add password button
-        add_password_button = ttk.Button(self.root, text="Add password", command=self.show_password_setter)
-        add_password_button.pack(pady=5)
-        add_password_button.bind("<Return>", lambda _: add_password_button.invoke())
-
-        # Password content display
-        self.password_display = ttk.Frame(self.root)
-        self.password_display.pack(pady=5)
-        
-        self.update_password_display()
-        self.adjust_window_size()
-    
     def update_password_display(self, sort="Date", ascending=False, search_query=None):
-        
         def levenshtein_fuzzy_search(query, data, max_distance=5):
             results = {}
             for key in data.keys():
@@ -575,49 +383,333 @@ class PasswordManagerApp:
             copy_button.pack(side="right", anchor="e", padx=5)
             copy_button.bind("<Return>", lambda _: copy_button.invoke())
 
+    def on_screen_close(self, screen):
+        print(f"On screen close. Screen: {screen}")
+        print(f"BRoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
+        if screen == "root_window":
+            self.root_window_open = False
+            self.root.destroy()
+        elif screen == "password_setter_window":
+            self.password_setter_window_open = False
+            self.password_setter_window.destroy()
+        elif screen == "manage_categories_window":
+            self.manage_categories_window_open = False
+            self.manage_categories_window.destroy()
+        elif screen == "rename_category_window":
+            self.rename_category_window_open = False
+            self.rename_category_window.destroy()
+        elif screen == "change_master_password_window":
+            self.change_master_password_window_open = False
+            self.change_master_password_window.destroy()
+        print(f"ARoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
+
+    def on_screen_open(self, screen):
+        print(f"On screen open. Screen: {screen}")
+        print(f"BRoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
+        if screen == "root_window":
+            self.root_window_open = True
+        elif screen == "password_setter_window":
+            self.password_setter_window_open = True
+        elif screen == "manage_categories_window":
+            print("RAAH")
+            self.manage_categories_window_open = True
+        elif screen == "rename_category_window":
+            self.rename_category_window_open = True
+        elif screen == "change_master_password_window":
+            self.change_master_password_window_open = True
+        print(f"ARoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
+
+    def clear_screen(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+    def adjust_window_size(self, window=None):
+        target_window = self.root if window is None else window
+        target_window.update_idletasks()
+        window_width = target_window.winfo_reqwidth()
+        window_height = target_window.winfo_reqheight()
+        screen_width = target_window.winfo_screenwidth()
+        screen_height = target_window.winfo_screenheight()
+        window_width += 50 
+        window_height += 50 
+        x = (screen_width / 2) - (window_width / 2)
+        y = (screen_height / 2) - (window_height / 2)
+        target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
+
+    def on_manage_categories_window_close(self, setter_x, setter_y, service=None, password=None, username=None, email=None, category=None, notes=None):
+        self.on_screen_close("manage_categories_window")
+        self.window_position = (setter_x, setter_y)
+        self.manage_categories_window.destroy()
+        try: 
+            self.password_setter_window.destroy()
+        except:
+            pass
+        self.show_password_setter(service=service, password=password, username=username, email=email, category=category, notes=notes)
+
+
+
+    # Screens
+    def show_initial_screen(self, account_exists=None):
+        # Name: self.root (root_window)
+
+        # Check if window is already open
+        if self.root_window_open:
+            print("Root window already open")
+            self.root.lift()
+            self.root.focus_set()
+            return
+        
+        # Set window close event and open status
+        self.clear_screen()
+        self.root.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("root_window"))
+        self.on_screen_open("root_window")
+        self.root.bind("<Escape>", lambda _: self.root.destroy())
+
+        # Inner functions
+        def sign_up_event(store_key, ask_conformation=True):
+            # Check if passwords are empty
+            if not self.master_password_entry.get() or not self.confirm_password_entry.get():
+                messagebox.showerror("Error", "Master password cannot be empty")
+                return
+            
+            # Check if passwords match
+            if self.master_password_entry.get() != self.confirm_password_entry.get():
+                messagebox.showerror("Error", "Passwords do not match")
+                return
+
+            # Check if any passwords exist
+            if ask_conformation:
+                with open("vault.json", "r") as file:
+                    vault = json.load(file)
+                if vault:
+                    sure = messagebox.askyesno("Are you sure?", "Are you sure you want to create a new account? Some passwords are already stored, which  will be lost if you proceed.")
+                    if not sure:
+                        return
+
+            # Update settings and sign up
+            self.update_settings(store_key=self.store_key_var_init.get())
+            self.sign_up(store_key=store_key)
+
+        def store_key_toggle_init():
+            self.store_key_var_init.set(not self.store_key_var_init.get())
+ 
+        secret_key_exists = self.check_key_presence()
+        known_value_exists = self.chcek_known_value_presence()
+        if account_exists is None:
+            account_exists = secret_key_exists or known_value_exists
+
+        if account_exists:
+            # Display login screen
+            ttk.Label(self.root, text="Master Password:").pack(pady=10)
+            self.password_entry = ttk.Entry(self.root, show="*")
+            self.password_entry.pack(pady=5)
+            self.password_entry.focus_set()
+
+            # Login button
+            login_button = ttk.Button(self.root, text="Login", command= lambda: self.login(store_key=secret_key_exists))
+            login_button.pack(pady=5)
+            login_button.bind("<Return>", lambda _: self.login(store_key=secret_key_exists))
+            self.password_entry.bind("<Return>", lambda _: self.login(store_key=secret_key_exists))
+            self.root.bind_class("Button", "<Return>", lambda event: event.widget.invoke())
+
+            # Sign up button
+            sign_up_button = ttk.Button(
+                self.root, 
+                text="Sign Up", 
+                command=lambda: self.show_initial_screen(account_exists=False),
+            )
+            sign_up_button.pack(side="bottom", pady=5)
+            sign_up_button.bind("<Return>", lambda _: self.show_initial_screen(account_exists=False))
+        else:
+            # Display sign up screen
+            # Master password
+            ttk.Label(self.root, text="Choose Master Password:").pack(pady=5)
+            self.master_password_entry = ttk.Entry(self.root, show="*")
+            self.master_password_entry.pack(pady=5)
+            self.master_password_entry.focus_set()
+            self.master_password_entry.bind("<Return>", lambda _: self.confirm_password_entry.focus_set())
+            
+            # Confirm master password
+            ttk.Label(self.root, text="Confirm Master Password:").pack(pady=5)
+            self.confirm_password_entry = ttk.Entry(self.root, show="*")
+            self.confirm_password_entry.pack(pady=5)
+            self.confirm_password_entry.bind(
+                "<Return>",
+                lambda _: sign_up_event(store_key=self.store_key_var_init.get(), ask_conformation=secret_key_exists or known_value_exists)
+            )
+
+            # Store key checkbox
+            self.store_key_var_init = tkinter.BooleanVar()
+            self.store_key_var_init.set(False)
+            store_key_checkbox = ttk.Checkbutton(
+                self.root, 
+                text="Store key after closing", 
+                variable=self.store_key_var_init,
+            )
+            store_key_checkbox.pack(pady=5)
+            store_key_checkbox.bind("<Return>", lambda _: store_key_toggle_init())
+
+            # Sign up button
+            sign_up_button = ttk.Button(
+                self.root, 
+                text="Sign Up", 
+                command=lambda: sign_up_event(store_key=self.store_key_var_init.get(), ask_conformation=secret_key_exists or known_value_exists)
+            )
+            sign_up_button.pack(pady=5)
+            sign_up_button.bind(
+                "<Return>", 
+                lambda _: sign_up_event(store_key=self.store_key_var_init.get(), ask_conformation=secret_key_exists or known_value_exists)
+            )
+
+            # Login button
+            login_button = ttk.Button(
+                self.root, 
+                text="Login",
+                command=lambda: self.show_initial_screen(account_exists=True)
+            )
+            login_button.pack(side="bottom", pady=5)
+            login_button.bind("<Return>", lambda _: self.show_initial_screen(account_exists=True))
+            if not secret_key_exists and not known_value_exists:
+                login_button.config(state="disabled")
+
+    def show_main_screen(self):
+        # Name: self.root (root_window)
+        
+        # Set window close event and open status
+        self.clear_screen()
+        self.root.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("root_window"))
+        self.on_screen_open("root_window") 
+
+        # Inner functions
+        self.current_order = False
+        def toggle_sort_order():
+                self.current_order = not self.current_order
+                # Update the button"s text based on the current order
+                self.sort_button.config(text="▲" if self.current_order else "▼")
+                self.update_password_display(sort=sort_dropdown.get(), ascending=self.current_order)
+        
+        def store_key_toggle():
+            self.store_key_var.set(not self.store_key_var.get())
+            self.update_settings(store_key=self.store_key_var.get())
+
+        # Left side
+        left_frame = ttk.Frame(self.root)
+        left_frame.pack(side="left", fill="y", padx=5)
+
+        # Search option
+        search_frame = ttk.Frame(left_frame)
+        search_frame.pack(pady=5)
+        ttk.Label(search_frame, text="Search: ").pack(side="left")
+        search_entry = ttk.Entry(search_frame, width=15)
+        search_entry.pack(side="left")
+        search_entry.bind("<Return>", lambda _: search_button.invoke())
+        search_button = ttk.Button(search_frame, text="Search", command=lambda: self.update_password_display(search_query=search_entry.get()))
+        search_button.pack(side="left")
+        search_button.bind("<Return>", lambda _: search_button.invoke())
+
+        # Sort options
+        sort_frame = ttk.Frame(left_frame)
+        sort_frame.pack(pady=5)
+        ttk.Label(sort_frame, text="Sort:").pack(side="left")
+        sort_dropdown = ttk.Combobox(sort_frame, values=["Date", "Name", "Category"], state="readonly", width=10)
+        sort_dropdown.current(0)
+        sort_dropdown.pack(side="left")
+        sort_dropdown.bind("<<ComboboxSelected>>", lambda _: self.update_password_display(sort=sort_dropdown.get()))
+        self.sort_button = ttk.Button(sort_frame, text="▼", command=toggle_sort_order, width=2)
+        self.sort_button.pack(side="left")
+        self.sort_button.bind("<Return>", lambda _: self.sort_button.invoke())
+
+        # Store key after closing radio
+        settings = self.get_settings()
+        self.store_key_var = tkinter.BooleanVar()
+        self.store_key_var.set(settings["store_key"])
+        self.store_key_checkbox = ttk.Checkbutton(
+            left_frame, 
+            text="Store key after closing", 
+            variable=self.store_key_var, 
+            command=lambda: self.update_settings(store_key=self.store_key_var.get()))
+        self.store_key_checkbox.pack(pady=5)
+        self.store_key_checkbox.bind("<Return>", lambda _: store_key_toggle())
+
+        # Change master password button
+        change_master_password_button = ttk.Button(left_frame, text="Change Master Password", command=self.show_change_master_password)
+        change_master_password_button.pack(pady=5)
+        change_master_password_button.bind("<Return>", lambda _: change_master_password_button.invoke())
+
+        # Right side
+        right_frame = ttk.Frame(self.root)
+        right_frame.pack(side="right", fill="y", padx=5)
+
+        # Add password button
+        add_password_button = ttk.Button(right_frame, text="Add password", command=self.show_password_setter)
+        add_password_button.pack(pady=5)
+        add_password_button.bind("<Return>", lambda _: add_password_button.invoke())
+
+        # Password content display
+        self.password_display = ttk.Frame(right_frame)
+        self.password_display.pack(pady=5)
+        
+        self.update_password_display()
+        self.adjust_window_size()
+
     def show_password_setter(self, service=None, password=None, username=None, email=None, category=None, notes=None):
+        # Name: self.password_setter_window
+
+        # Check if window is already open
+        if self.password_setter_window_open and self.password_setter_window and self.password_setter_window.winfo_exists():
+            print("Password setter window already open")
+            self.password_setter_window.lift()
+            self.password_setter_window.focus_set()
+            return
+        
+        # Set window
+        self.password_setter_window = tkinter.Toplevel(self.root)
+        
+        # Set window close event and open status
+        self.password_setter_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("password_setter_window"))
+        self.on_screen_open("password_setter_window")
+
         change_mode = service is not None and password is not None and self.get_service_content(service) is not None
         original_service = service
-        
-        self.password_window = tkinter.Toplevel(self.root)
+
         if change_mode:
-            self.password_window.title("Change Password")
+            self.password_setter_window.title("Change Password")
         else:
-            self.password_window.title("Add Password")
+            self.password_setter_window.title("Add Password")
         try:
             if self.window_position:
                 x, y = self.window_position
-                self.password_window.geometry(f"400x450+{x}+{y}")
-            self.password_window.title("Manage Categories")
+                self.password_setter_window.geometry(f"400x450+{x}+{y}")
+            self.password_setter_window.title("Manage Categories")
         except Exception:
-            self.password_window.geometry("400x450")
+            self.password_setter_window.geometry("400x450")
             pass
-        self.password_window.bind("<Escape>", lambda _: self.password_window.destroy())
+        self.password_setter_window.bind("<Escape>", lambda _: self.password_setter_window.destroy())
 
         # Service
-        ttk.Label(self.password_window, text="Enter Service*:").pack(pady=10)
-        service_entry = ttk.Entry(self.password_window, width=30)
+        ttk.Label(self.password_setter_window, text="Enter Service*:").pack(pady=10)
+        service_entry = ttk.Entry(self.password_setter_window, width=30)
         service_entry.pack(pady=5)
         service_entry.focus_set()
         if service:
             service_entry.insert(0, service)
 
         # Username
-        ttk.Label(self.password_window, text="Enter username:").pack(pady=10)
-        username_entry = ttk.Entry(self.password_window, width=50)
+        ttk.Label(self.password_setter_window, text="Enter username:").pack(pady=10)
+        username_entry = ttk.Entry(self.password_setter_window, width=50)
         username_entry.pack(pady=5)
         if username:
             username_entry.insert(0, username)
 
         # Email
-        ttk.Label(self.password_window, text="Enter email:").pack(pady=10)
-        email_entry = ttk.Entry(self.password_window, width=50)
+        ttk.Label(self.password_setter_window, text="Enter email:").pack(pady=10)
+        email_entry = ttk.Entry(self.password_setter_window, width=50)
         email_entry.pack(pady=5)
         if email:
             email_entry.insert(0, email)
 
         # Category
-        category_frame = ttk.Frame(self.password_window)
+        category_frame = ttk.Frame(self.password_setter_window)
         category_frame.pack(pady=5)
 
         ttk.Label(category_frame, text="Category:").pack(side="left")
@@ -627,7 +719,9 @@ class PasswordManagerApp:
         category_entry.current(0)
         category_entry.pack(side="left")
         if category:
-            category_entry.set(category)
+            # Check if category exists
+            if category in cateories:
+                category_entry.set(category)
         
         # Add category button
         ttk.Button(
@@ -644,15 +738,15 @@ class PasswordManagerApp:
         ).pack(side="left")
 
         # Notes
-        ttk.Label(self.password_window, text="Enter notes:").pack(pady=10)
-        notes_entry = ttk.Entry(self.password_window, width=50)
+        ttk.Label(self.password_setter_window, text="Enter notes:").pack(pady=10)
+        notes_entry = ttk.Entry(self.password_setter_window, width=50)
         notes_entry.pack(pady=5)
         if notes:
             notes_entry.insert(0, notes)
 
         # Password
-        ttk.Label(self.password_window, text="Enter Password*:").pack(pady=10)
-        password_entry = ttk.Entry(self.password_window, width=50)
+        ttk.Label(self.password_setter_window, text="Enter Password*:").pack(pady=10)
+        password_entry = ttk.Entry(self.password_setter_window, width=50)
         password_entry.pack(pady=5)
         password_entry.bind("<Return>", lambda _: submit_content())
         if password:
@@ -693,16 +787,36 @@ class PasswordManagerApp:
                     category="" if category == "None" else category,
                     notes=notes
                 )
-            self.password_window.destroy()
+            self.password_setter_window.destroy()
             self.update_password_display()
 
-        save_button = ttk.Button(self.password_window, text="Save", command=submit_content)
+        save_button = ttk.Button(self.password_setter_window, text="Save", command=submit_content)
         save_button.pack(pady=10)
         save_button.bind("<Return>", lambda _: submit_content())
 
-        self.password_window.bind("<Escape>", lambda _: self.password_window.destroy())
+        self.password_setter_window.bind("<Escape>", lambda _: self.password_setter_window.destroy())
 
     def show_manage_categories(self, service_r=None, password_r=None, username_r=None, email_r=None, category_r=None, notes_r=None):
+        # Name: self.manage_categories_window
+
+        # Check if window is already open
+        if self.manage_categories_window_open and self.manage_categories_window and self.manage_categories_window.winfo_exists():
+            print("Manage categories window already open")
+            self.manage_categories_window.lift()
+            self.manage_categories_window.focus_set()
+            return
+        
+        # Set window
+        self.manage_categories_window = tkinter.Toplevel(self.root)
+        
+        # Set window close event and open status
+        self.manage_categories_window.protocol("WM_DELETE_WINDOW", lambda: self.on_manage_categories_window_close(
+            self.password_setter_window.winfo_x(), self.password_setter_window.winfo_y(),
+            service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
+        ))
+        self.on_screen_open("manage_categories_window")
+
+        # Inner functions
         def add_category():
             category = category_entry.get()
             if not category:
@@ -731,11 +845,7 @@ class PasswordManagerApp:
                 service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
             )
 
-        self.manage_categories_window = tkinter.Toplevel(self.root)
-        self.manage_categories_window.protocol("WM_DELETE_WINDOW", lambda: self.on_manage_categories_window_close(
-            self.password_window.winfo_x(), self.password_window.winfo_y(),
-            service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
-        ))
+
         try:
             if self.window_position:
                 x, y = self.window_position
@@ -744,7 +854,7 @@ class PasswordManagerApp:
         except Exception:
             self.manage_categories_window.geometry("400x200")
         self.manage_categories_window.bind("<Escape>", lambda _:self.on_manage_categories_window_close(
-            self.password_window.winfo_x(), self.password_window.winfo_y(),
+            self.password_setter_window.winfo_x(), self.password_setter_window.winfo_y(),
             service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
         ))
 
@@ -752,7 +862,7 @@ class PasswordManagerApp:
         for category in categories:
             frame = ttk.Frame(self.manage_categories_window)
             frame.pack(fill="x", pady=2)
-            ttk.Label(frame, text=category, anchor="w").pack(side="left", fill="x", expand=True)
+            ttk.Label(frame, text=category, anchor="w").pack(side="left", fill="x", expand=True, padx=5)
 
             # Buttons
             change_button = ttk.Button(frame, text="Rename", command=lambda c=category: self.show_rename_category(category=c))
@@ -778,6 +888,26 @@ class PasswordManagerApp:
         self.adjust_window_size(self.manage_categories_window)
 
     def show_rename_category(self, category):
+        # Name: self.rename_category_window
+
+        # Check if window is already open
+        if self.rename_category_window_open and self.rename_category_window and self.rename_category_window.winfo_exists():
+            print("Rename category window already open")
+            self.rename_category_window.lift()
+            self.rename_category_window.focus_set()
+            return
+        
+        # Set window
+        self.rename_category_window = tkinter.Toplevel(self.root)
+        self.rename_category_window.title("Rename Category")
+        self.rename_category_window.bind("<Escape>", lambda _: self.rename_category_window.destroy())
+        self.rename_category_window.geometry("400x300")
+
+        # Set window close event and open status
+        self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("rename_category_window"))
+        self.on_screen_open("rename_category_window")
+
+        # Inner functions
         def rename_category():
             x = self.manage_categories_window.winfo_x()
             y = self.manage_categories_window.winfo_y()
@@ -787,32 +917,47 @@ class PasswordManagerApp:
                 messagebox.showerror("Error", "Category cannot be empty")
                 return
             if new_category == category:
-                rename_window.destroy()
+                self.rename_category_window.destroy()
                 return
             
             if self.rename_category(category, new_category):
                 # Get current window position
-                rename_window.destroy()
+                self.rename_category_window.destroy()
                 self.manage_categories_window.destroy()
                 self.show_manage_categories()
 
-        rename_window = tkinter.Toplevel(self.root)
-        rename_window.title("Rename Category")
-        rename_window.bind("<Escape>", lambda _: rename_window.destroy())
-        rename_window.geometry("400x300")
-
-        ttk.Label(rename_window, text="Category name:").pack(pady=10)
-        category_entry = ttk.Entry(rename_window, width=50)
+        ttk.Label(self.rename_category_window, text="Category name:").pack(pady=10)
+        category_entry = ttk.Entry(self.rename_category_window, width=50)
         category_entry.pack(pady=5)
         category_entry.insert(0, category)
         category_entry.focus_set()
         category_entry.bind("<Return>", lambda _: rename_category())
 
-        rename_category_button = ttk.Button(rename_window, text="Rename Category", command=rename_category)
+        rename_category_button = ttk.Button(self.rename_category_window, text="Rename Category", command=rename_category)
         rename_category_button.pack(pady=10)
         rename_category_button.bind("<Return>", lambda _: rename_category())
 
     def show_change_master_password(self):
+        # Name: self.change_master_password_window
+
+        # Check if window is already open
+        if self.change_master_password_window_open and self.change_master_password_window and self.change_master_password_window.winfo_exists():
+            print("Change master password window already open")
+            self.change_master_password_window.lift()
+            self.change_master_password_window.focus_set()
+            return
+        
+        # Set window
+        self.change_master_password_window = tkinter.Toplevel(self.root)
+        self.change_master_password_window.title("Change Master Password")
+        self.change_master_password_window.bind("<Escape>", lambda _: self.change_master_password_window.destroy())
+        self.change_master_password_window.geometry("400x300")
+        
+        # Set window close event and open status
+        self.change_master_password_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("change_master_password_window"))
+        self.on_screen_open("change_master_password_window")
+
+        # Inner functions
         def change_master_password():
             old_password = old_password_entry.get()
             current_store_key_setting = self.get_settings()["store_key"]
@@ -841,7 +986,7 @@ class PasswordManagerApp:
             
             sure = messagebox.askyesno("Are you sure?", "Are you sure you want to change the master password?")
             if not sure:
-                change_window.destroy()
+                self.change_master_password_window.destroy()
                 return
             
             # Setup new master password and encrypt current passwords with new key
@@ -859,28 +1004,23 @@ class PasswordManagerApp:
             
             # Change key
             self.key = new_key
-            change_window.destroy()
+            self.change_master_password_window.destroy()
 
-        change_window = tkinter.Toplevel(self.root)
-        change_window.title("Change Master Password")
-        change_window.bind("<Escape>", lambda _: change_window.destroy())
-        change_window.geometry("400x300")
-
-        ttk.Label(change_window, text="Old master password:").pack(pady=10)
-        old_password_entry = ttk.Entry(change_window, width=50)
+        ttk.Label(self.change_master_password_window, text="Old master password:").pack(pady=10)
+        old_password_entry = ttk.Entry(self.change_master_password_window, width=50)
         old_password_entry.pack(pady=5)
         old_password_entry.focus_set()
 
-        ttk.Label(change_window, text="New master password:").pack(pady=10)
-        new_password_entry = ttk.Entry(change_window, width=50)
+        ttk.Label(self.change_master_password_window, text="New master password:").pack(pady=10)
+        new_password_entry = ttk.Entry(self.change_master_password_window, width=50)
         new_password_entry.pack(pady=5)
 
-        ttk.Label(change_window, text="Confirm new master password:").pack(pady=10)
-        confirm_password_entry = ttk.Entry(change_window, width=50)
+        ttk.Label(self.change_master_password_window, text="Confirm new master password:").pack(pady=10)
+        confirm_password_entry = ttk.Entry(self.change_master_password_window, width=50)
         confirm_password_entry.pack(pady=5)
         confirm_password_entry.bind("<Return>", lambda _: change_master_password())
 
-        change_password_button = ttk.Button(change_window, text="Change password", command=change_master_password)
+        change_password_button = ttk.Button(self.change_master_password_window, text="Change password", command=change_master_password)
         change_password_button.pack(pady=10)
         change_password_button.bind("<Return>", lambda _: change_master_password())
 
