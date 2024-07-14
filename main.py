@@ -384,8 +384,6 @@ class PasswordManagerApp:
             copy_button.bind("<Return>", lambda _: copy_button.invoke())
 
     def on_screen_close(self, screen):
-        print(f"On screen close. Screen: {screen}")
-        print(f"BRoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
         if screen == "root_window":
             self.root_window_open = False
             self.root.destroy()
@@ -401,23 +399,18 @@ class PasswordManagerApp:
         elif screen == "change_master_password_window":
             self.change_master_password_window_open = False
             self.change_master_password_window.destroy()
-        print(f"ARoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
 
     def on_screen_open(self, screen):
-        print(f"On screen open. Screen: {screen}")
-        print(f"BRoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
         if screen == "root_window":
             self.root_window_open = True
         elif screen == "password_setter_window":
             self.password_setter_window_open = True
         elif screen == "manage_categories_window":
-            print("RAAH")
             self.manage_categories_window_open = True
         elif screen == "rename_category_window":
             self.rename_category_window_open = True
         elif screen == "change_master_password_window":
             self.change_master_password_window_open = True
-        print(f"ARoot window open: {self.root_window_open}, Password setter window open: {self.password_setter_window_open}, Manage categories window open: {self.manage_categories_window_open}, Rename category window open: {self.rename_category_window_open}, Change master password window open: {self.change_master_password_window_open}")
 
     def clear_screen(self):
         for widget in self.root.winfo_children():
@@ -446,7 +439,15 @@ class PasswordManagerApp:
             pass
         self.show_password_setter(service=service, password=password, username=username, email=email, category=category, notes=notes)
 
-
+    def on_manage_rename_category_window_close(self, setter_x, setter_y, service=None, password=None, username=None, email=None, category=None, notes=None):
+        self.on_screen_close("rename_category_window")
+        self.window_position = (setter_x, setter_y)
+        self.rename_category_window.destroy()
+        try: 
+            self.password_setter_window.destroy()
+        except:
+            pass
+        self.show_password_setter(service=service, password=password, username=username, email=email, category=category, notes=notes)
 
     # Screens
     def show_initial_screen(self, account_exists=None):
@@ -808,9 +809,14 @@ class PasswordManagerApp:
         
         # Set window
         self.manage_categories_window = tkinter.Toplevel(self.root)
+        self.manage_categories_window.title("Manage Categories")
         
         # Set window close event and open status
         self.manage_categories_window.protocol("WM_DELETE_WINDOW", lambda: self.on_manage_categories_window_close(
+            self.password_setter_window.winfo_x(), self.password_setter_window.winfo_y(),
+            service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
+        ))
+        self.manage_categories_window.bind("<Escape>", lambda _:self.on_manage_categories_window_close(
             self.password_setter_window.winfo_x(), self.password_setter_window.winfo_y(),
             service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
         ))
@@ -845,18 +851,13 @@ class PasswordManagerApp:
                 service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
             )
 
-
+        # Set window position
         try:
             if self.window_position:
                 x, y = self.window_position
                 self.manage_categories_window.geometry(f"400x200+{x}+{y}")
-            self.manage_categories_window.title("Manage Categories")
         except Exception:
             self.manage_categories_window.geometry("400x200")
-        self.manage_categories_window.bind("<Escape>", lambda _:self.on_manage_categories_window_close(
-            self.password_setter_window.winfo_x(), self.password_setter_window.winfo_y(),
-            service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
-        ))
 
         categories = self.get_categories()
         for category in categories:
@@ -865,7 +866,9 @@ class PasswordManagerApp:
             ttk.Label(frame, text=category, anchor="w").pack(side="left", fill="x", expand=True, padx=5)
 
             # Buttons
-            change_button = ttk.Button(frame, text="Rename", command=lambda c=category: self.show_rename_category(category=c))
+            change_button = ttk.Button(frame, text="Rename", command=lambda c=category: self.show_rename_category(
+                category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
+            ))
             change_button.pack(side="left")
             change_button.bind("<Return>", lambda _: change_button.invoke())
 
@@ -887,7 +890,7 @@ class PasswordManagerApp:
 
         self.adjust_window_size(self.manage_categories_window)
 
-    def show_rename_category(self, category):
+    def show_rename_category(self, category, service_r=None, password_r=None, username_r=None, email_r=None, category_r=None, notes_r=None):
         # Name: self.rename_category_window
 
         # Check if window is already open
@@ -924,7 +927,9 @@ class PasswordManagerApp:
                 # Get current window position
                 self.rename_category_window.destroy()
                 self.manage_categories_window.destroy()
-                self.show_manage_categories()
+                self.show_manage_categories(
+                    service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
+                )
 
         ttk.Label(self.rename_category_window, text="Category name:").pack(pady=10)
         category_entry = ttk.Entry(self.rename_category_window, width=50)
@@ -1055,7 +1060,7 @@ def main():
         y = (screen_height / 2) - (window_height / 2)
         root.geometry("300x300")
         root.lift()
-        root.iconphoto(False, tkinter.PhotoImage(file="icon.png"))
+        root.iconphoto(True, tkinter.PhotoImage(file="icon.png"))
         root.mainloop()
     finally:
         if app_instance:
