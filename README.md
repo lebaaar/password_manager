@@ -44,11 +44,14 @@ A simple, yet effective password manager built with Python and Tkinter. I built 
 
 ## Gallery
 <p align="center">
+  <img src="images/app.png" alt="App screen">
+</p>
+<p align="center">
+  <img src="images/manage.png" alt="App screen">
+</p>
+<p align="center">
   <img src="images/login.png" alt="Login screen">
 </p>
 <p align="center">
   <img src="images/signup.png" alt="Sign up screen">
-</p>
-<p align="center">
-  <img src="images/app.png" alt="App screen">
 </p>
