@@ -201,18 +201,40 @@ class PasswordManagerApp:
 
     def rename_category(self, old_category, new_category):
         categories = self.get_categories()
+
+        # Check if category exists
+        if old_category not in categories:
+            messagebox.showerror("Error", "Category does not exist")
+            return False
+        
+        # Check duplicates
         if new_category in categories:
             messagebox.showerror("Error", "Category already exists")
             return False
-        if old_category in categories:
-            categories.remove(old_category)
-            categories.append(new_category)
-            with open("categories.json", "w") as file:
-                json.dump(categories, file)
-            return True
-        else:
-            messagebox.showerror("Error", "Category does not exist")
-            return False
+        
+        # Check if category is in use
+        with open("vault.json", "r") as file:
+            vault = json.load(file)
+        for _, content in vault.items():
+            if content["category"] == old_category:
+                sure = messagebox.askyesno("Category in use", f"Category {old_category} is in use. Are you sure you want to rename it?")
+                if not sure:
+                    return False
+                break
+        
+        # Rename category
+        categories.remove(old_category)
+        categories.append(new_category)
+        with open("categories.json", "w") as file:
+            json.dump(categories, file)
+
+        # Update vault.json
+        for _, content in vault.items():
+            if content["category"] == old_category:
+                content["category"] = new_category
+        with open("vault.json", "w") as file:
+            json.dump(vault, file)
+        return True
 
 
 
