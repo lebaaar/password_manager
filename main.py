@@ -654,11 +654,6 @@ class PasswordManagerApp:
             self.current_search_query = self.search_entry.get()
             self.update_password_display()
 
-        def on_search_enter():
-            # Focus on first password view
-            if self.password_views:
-                self.password_views[0].focus_set()
-
         def on_sort_direction():
             self.current_sort_order = not self.current_sort_order
             self.sort_button.config(text="▲" if self.current_sort_order else "▼")
@@ -684,7 +679,7 @@ class PasswordManagerApp:
         self.search_entry.pack(side="left")
         self.search_entry.focus_set()
         self.search_entry.bind("<KeyRelease>", lambda _: on_search())
-        self.search_entry.bind("<Return>", lambda _: on_search_enter())
+        self.search_entry.bind("<Tab>", lambda _: sort_dropdown.focus_set())
 
         # Sort options
         sort_frame = ttk.Frame(left_frame)
