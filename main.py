@@ -491,9 +491,8 @@ class PasswordManagerApp:
     def show_initial_screen(self, account_exists=None):
         # Name: self.root (root_window)
 
-        # Check if window is already open
-        if self.root_window_open:
-            print("Root window already open")
+        # Check if window is already open and already has a key - logged in
+        if self.root_window_open and self.key:
             self.root.lift()
             self.root.focus_set()
             return
