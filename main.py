@@ -387,10 +387,12 @@ class PasswordManagerApp:
             results = levenshtein_fuzzy_search(self.current_search_query, all_content)
             all_content = results
 
-        # Filter by category
+        # Filter by category¸
         if self.current_filter_category and self.current_filter_category != "All":
             filtered_content = {}
             for service, content in all_content.items():
+                if self.current_filter_category == "No category" and not content["category"]:
+                    filtered_content[service] = content
                 if content["category"] == self.current_filter_category:
                     filtered_content[service] = content
             all_content = filtered_content
@@ -419,6 +421,7 @@ class PasswordManagerApp:
 
             info_frame = ttk.Frame(left_frame)
             info_frame.pack(side="top", fill="x", expand=True)
+            info_frame.pack(padx=(5, 0))
 
             ttk.Label(info_frame, text=f"{service}", anchor="w", font=("Helvetica", 14)).pack(side="top", fill="x", expand=True)
             ttk.Label(info_frame, text=f"{category if category else 'No category'}", anchor="w", font=("Helvetica", 10)).pack(side="top", fill="x", expand=True)
@@ -427,6 +430,7 @@ class PasswordManagerApp:
             delete_button = ttk.Button(right_frame, text="Delete", command=lambda s=service: self.delete_service_content(s))
             delete_button.pack(side="right", anchor="e")
             delete_button.bind("<Return>", lambda _, s=service: self.delete_service_content(s))
+            delete_button.pack(padx=(0, 5))
 
             change_button = ttk.Button(
                 right_frame, 
@@ -450,6 +454,7 @@ class PasswordManagerApp:
         elif screen == "password_setter_window":
             self.password_setter_window_open = False
             self.password_setter_window.destroy()
+            self.update_password_display()
         elif screen == "manage_categories_window":
             self.manage_categories_window_open = False
             self.manage_categories_window.destroy()
@@ -522,8 +527,8 @@ class PasswordManagerApp:
         # Set window close event and open status
         self.clear_screen()
         self.root.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("root_window"))
+        self.root.bind("<Escape>", lambda _: self.on_screen_close("root_window"))
         self.on_screen_open("root_window")
-        self.root.bind("<Escape>", lambda _: self.root.destroy())
 
         # Inner functions
         def sign_up_event(store_key, ask_conformation=True):
@@ -670,7 +675,7 @@ class PasswordManagerApp:
         search_frame = ttk.Frame(left_frame)
         search_frame.pack(pady=5)
         ttk.Label(search_frame, text="Search: ").pack(side="left")
-        self.search_entry = ttk.Entry(search_frame, width=25, takefocus=False)
+        self.search_entry = ttk.Entry(search_frame, width=25)
         self.search_entry.pack(side="left")
         self.search_entry.focus_set()
         self.search_entry.bind("<KeyRelease>", lambda _: on_search())
@@ -695,8 +700,9 @@ class PasswordManagerApp:
         category_frame.pack(pady=5)
         ttk.Label(category_frame, text="Filter by category:").pack(side="left")
         categories = self.get_categories()
-        categories.insert(0, "All")
-        category_dropdown = ttk.Combobox(category_frame, values=categories, state="readonly", width=10)
+        categories.append("No category")
+        categories.insert(0, "All")        
+        category_dropdown = ttk.Combobox(category_frame, values=categories, state="readonly", width=15)
         category_dropdown.current(0)
         category_dropdown.pack(side="left")
         category_dropdown.bind("<<ComboboxSelected>>", lambda _: on_filter())
@@ -706,7 +712,7 @@ class PasswordManagerApp:
         change_master_password_button.pack(pady=5, side="bottom")
         change_master_password_button.bind("<Return>", lambda _: change_master_password_button.invoke())
 
-        # Store key after closing radio
+        # Store key after closing checkbox
         settings = self.get_settings()
         self.store_key_var = tkinter.BooleanVar()
         self.store_key_var.set(settings["store_key"])
@@ -720,7 +726,7 @@ class PasswordManagerApp:
 
         # Right side
         right_frame = ttk.Frame(self.root)
-        right_frame.pack(side="right", fill="y", padx=5, expand=True, anchor="center")
+        right_frame.pack(side="right", fill="y", padx=5, pady=5, expand=True, anchor="center")
 
         # Add password button
         add_password_button = ttk.Button(right_frame, text="Add password", command=self.show_password_setter)
@@ -787,6 +793,7 @@ class PasswordManagerApp:
         
         # Set window close event and open status
         self.password_setter_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("password_setter_window"))
+        self.password_setter_window.bind("<Escape>", lambda _: self.on_screen_close("password_setter_window"))
         self.on_screen_open("password_setter_window")
 
         change_mode = service is not None and password is not None and self.get_service_content(service) is not None
@@ -804,7 +811,6 @@ class PasswordManagerApp:
         except Exception:
             self.password_setter_window.geometry("400x450")
             pass
-        self.password_setter_window.bind("<Escape>", lambda _: self.password_setter_window.destroy())
 
         # Service
         ttk.Label(self.password_setter_window, text="Enter Service*:").pack(pady=10)
@@ -884,7 +890,6 @@ class PasswordManagerApp:
         save_button.pack(pady=10)
         save_button.bind("<Return>", lambda _: submit_content())
 
-        self.password_setter_window.bind("<Escape>", lambda _: self.password_setter_window.destroy())
 
     def show_manage_categories(self, service_r=None, password_r=None, username_r=None, email_r=None, category_r=None, notes_r=None):
         # Name: self.manage_categories_window
@@ -990,11 +995,11 @@ class PasswordManagerApp:
         # Set window
         self.rename_category_window = tkinter.Toplevel(self.root)
         self.rename_category_window.title("Rename Category")
-        self.rename_category_window.bind("<Escape>", lambda _: self.rename_category_window.destroy())
         self.rename_category_window.geometry("400x300")
 
         # Set window close event and open status
         self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("rename_category_window"))
+        self.rename_category_window.bind("<Escape>", lambda _: self.on_screen_close("rename_category_window"))
         self.on_screen_open("rename_category_window")
 
         # Inner functions
@@ -1014,6 +1019,7 @@ class PasswordManagerApp:
                 # Get current window position
                 self.rename_category_window.destroy()
                 self.manage_categories_window.destroy()
+                category_r = new_category
                 self.show_manage_categories(
                     service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
                 )
@@ -1041,11 +1047,11 @@ class PasswordManagerApp:
         # Set window
         self.change_master_password_window = tkinter.Toplevel(self.root)
         self.change_master_password_window.title("Change Master Password")
-        self.change_master_password_window.bind("<Escape>", lambda _: self.change_master_password_window.destroy())
         self.change_master_password_window.geometry("400x300")
         
         # Set window close event and open status
         self.change_master_password_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("change_master_password_window"))
+        self.change_master_password_window.bind("<Escape>", lambda _: self.on_screen_close("change_master_password_window")) 
         self.on_screen_open("change_master_password_window")
 
         # Inner functions
