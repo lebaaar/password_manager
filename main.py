@@ -11,7 +11,7 @@ def install_and_import(package):
         subprocess.check_call([sys.executable, "-m", "pip", "install", package])
         __import__(package)
 
-packages = ["bcrypt", "cryptography", "tkinter", "Levenshtein"]
+packages = ["bcrypt", "cryptography", "tkinter", "Levenshtein", "tendo"]
 for package in packages:
     install_and_import(package)
 
@@ -20,6 +20,7 @@ from tkinter import ttk
 from tkinter import messagebox
 from ttkthemes import ThemedTk
 import Levenshtein
+from tendo import singleton
 
 try:
     import encryption as enc
@@ -790,6 +791,8 @@ class PasswordManagerApp:
         
         # Set window
         self.password_setter_window = tkinter.Toplevel(self.root)
+        self.password_setter_window.grab_set()
+        self.password_setter_window.transient(self.root)
         
         # Set window close event and open status
         self.password_setter_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("password_setter_window"))
@@ -890,7 +893,6 @@ class PasswordManagerApp:
         save_button.pack(pady=10)
         save_button.bind("<Return>", lambda _: submit_content())
 
-
     def show_manage_categories(self, service_r=None, password_r=None, username_r=None, email_r=None, category_r=None, notes_r=None):
         # Name: self.manage_categories_window
 
@@ -903,6 +905,8 @@ class PasswordManagerApp:
         # Set window
         self.manage_categories_window = tkinter.Toplevel(self.root)
         self.manage_categories_window.title("Manage Categories")
+        self.manage_categories_window.grab_set()
+        self.manage_categories_window.transient(self.root)
         
         # Set window close event and open status
         self.manage_categories_window.protocol("WM_DELETE_WINDOW", lambda: self.on_manage_categories_window_close(
@@ -996,6 +1000,8 @@ class PasswordManagerApp:
         self.rename_category_window = tkinter.Toplevel(self.root)
         self.rename_category_window.title("Rename Category")
         self.rename_category_window.geometry("400x300")
+        self.rename_category_window.grab_set()
+        self.rename_category_window.transient(self.root)
 
         # Set window close event and open status
         self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("rename_category_window"))
@@ -1053,6 +1059,8 @@ class PasswordManagerApp:
         self.change_master_password_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("change_master_password_window"))
         self.change_master_password_window.bind("<Escape>", lambda _: self.on_screen_close("change_master_password_window")) 
         self.on_screen_open("change_master_password_window")
+        self.change_master_password_window.grab_set()
+        self.change_master_password_window.transient(self.root)
 
         # Inner functions
         def change_master_password():
@@ -1195,4 +1203,8 @@ def main():
             exit_app(app_instance)
 
 if __name__ == "__main__":
-    main()
+    try:
+        me = singleton.SingleInstance()
+        main()
+    except singleton.SingleInstanceException:
+        sys.exit(0)
