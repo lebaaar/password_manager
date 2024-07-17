@@ -48,6 +48,7 @@ class PasswordManagerApp:
         self.current_sort_order = False
         
         self.password_views = []
+        self.password_display = None
 
         # Tracking open winows
         self.root_window_open = False
@@ -78,7 +79,8 @@ class PasswordManagerApp:
         categories_file_path = "categories.json"
         settings_file_path = "settings.json"
         settings_template = {
-            "store_key": False
+            "store_key": False,
+            "display_passwords": True
         }
 
         # Ensure categories.json exists
@@ -136,7 +138,7 @@ class PasswordManagerApp:
             except FileNotFoundError as e:
                 messagebox.showerror("Error", f"{e}")
             except Exception as e:
-                messagebox.showerror("Errordfgfd", f"An error occurred: {e}")
+                messagebox.showerror("Error", f"An error occurred: {e}")
         else:
             # Key not stored, known value should be stored
             try:
@@ -147,7 +149,7 @@ class PasswordManagerApp:
                     messagebox.showerror("Error", "Invalid master password")
             except FileNotFoundError as e:
                 messagebox.showerror("Error", f"{e}")
-            except Exception as e:
+            except FileExistsError as e:
                 messagebox.showerror("Error", f"An error occurred: {e}")
 
     def sign_up(self, event=None, store_key=False):
@@ -341,12 +343,20 @@ class PasswordManagerApp:
         with open("settings.json", "r") as file:
             return json.load(file)
         
-    def update_settings(self, store_key=None):
+    def update_settings(self, store_key=None, show_passwords=None):
+        try:
+            with open("settings.json", "r") as file:
+                settings = json.load(file)
+        except:
+            settings = {"store_key": False, "display_passwords": True}
+        
         if store_key is not None:
-            with open("settings.json", "w") as file:
-                json.dump({"store_key": store_key}, file)
-
-
+            settings["store_key"] = store_key
+        if show_passwords is not None:
+            settings["display_passwords"] = show_passwords
+        
+        with open("settings.json", "w") as file:
+            json.dump(settings, file)
 
     # UI management
     def update_password_display(self):
@@ -370,6 +380,9 @@ class PasswordManagerApp:
             self.root.clipboard_append(password)
             self.root.update()
 
+        if not self.password_display:
+            return
+        
         # Clear current display
         for widget in self.password_display.winfo_children():
             widget.destroy()
@@ -651,6 +664,10 @@ class PasswordManagerApp:
             self.store_key_var.set(not self.store_key_var.get())
             self.update_settings(store_key=self.store_key_var.get())
 
+        def show_passwords_toggle():
+            self.show_passwords_var.set(not self.show_passwords_var.get())
+            self.update_settings(show_passwords=self.show_passwords_var.get())
+
         def on_search():
             self.current_search_query = self.search_entry.get()
             self.update_password_display()
@@ -667,6 +684,8 @@ class PasswordManagerApp:
         def on_filter():
             self.current_filter_category = category_dropdown.get()
             self.update_password_display()
+
+        settings = self.get_settings()
 
         # Left side
         left_frame = ttk.Frame(self.root)
@@ -713,8 +732,18 @@ class PasswordManagerApp:
         change_master_password_button.pack(pady=5, side="bottom")
         change_master_password_button.bind("<Return>", lambda _: change_master_password_button.invoke())
 
+        # Show passwords checkbox - TODO
+        # self.show_passwords_var = tkinter.BooleanVar()
+        # self.show_passwords_var.set(settings["display_passwords"])
+        # show_passwords_checkbox = ttk.Checkbutton(
+        #     left_frame, 
+        #     text="Show passwords", 
+        #     variable=self.show_passwords_var, 
+        #     command=lambda: self.update_settings(show_passwords=self.show_passwords_var.get()))
+        # show_passwords_checkbox.pack(pady=5, side="bottom")
+        # show_passwords_checkbox.bind("<Return>", lambda _: show_passwords_toggle())
+
         # Store key after closing checkbox
-        settings = self.get_settings()
         self.store_key_var = tkinter.BooleanVar()
         self.store_key_var.set(settings["store_key"])
         self.store_key_checkbox = ttk.Checkbutton(
@@ -1193,11 +1222,10 @@ def main():
             root.bind(f"{i}", lambda e, i=i: focus_password_view(i))
 
         root.mainloop()
-    except Exception as e:
+    except FileExistsError as e:
         messagebox.showerror("Error", f"An error occurred: {e}")
         if app_instance:
             exit_app(app_instance)
-        
     finally:
         if app_instance:
             exit_app(app_instance)
