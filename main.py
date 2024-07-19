@@ -509,6 +509,8 @@ class PasswordManagerApp:
 
             self.password_views.append(change_button)
 
+        self.search_entry.focus_set()
+
     def on_screen_close(self, screen):
         if screen == "root_window":
             self.root_window_open = False
@@ -526,9 +528,7 @@ class PasswordManagerApp:
         elif screen == "rename_category_window":
             self.rename_category_window_open = False
             self.rename_category_window.destroy()
-            self.manage_categories_window.focus_set()
-            self.new_category_entry.focus_set()
-            self.manage_categories_window.lift()
+            # Additional logic in self.on_rename_category_window_close
         elif screen == "change_master_password_window":
             self.change_master_password_window_open = False
             self.change_master_password_window.destroy()
@@ -604,6 +604,22 @@ class PasswordManagerApp:
         self.password_setter_window.focus_set()
         self.manage_categories_button.focus_set()
         self.password_setter_window.lift()
+
+    def on_rename_category_window_close(self, service, password, username, email, category, notes):
+        self.on_screen_close("rename_category_window")
+        self.manage_categories_window.destroy()
+        self.show_manage_categories(
+            service_r=service,
+            password_r=password,
+            username_r=username,
+            email_r=email,
+            category_r=category,
+            notes_r=notes
+        )
+        self.manage_categories_window.focus_set()
+        self.manage_categories_window.lift()
+        self.new_category_entry.focus_set()
+
 
 
     # Screens
@@ -1112,12 +1128,14 @@ class PasswordManagerApp:
         self.manage_categories_window.bind("<FocusOut>", self.restore_placeholder)
         self.new_category_entry.bind("<Return>", lambda _: add_category())
 
+
         # Add category button
         add_category_button = ttk.Button(self.manage_categories_window, text="Add Category", command=add_category)
         add_category_button.pack(pady=10)
         add_category_button.bind("<Return>", lambda _: add_category())
 
         self.adjust_window_size(self.manage_categories_window)
+        self.new_category_entry.focus_set()
 
     def show_rename_category(self, category, service_r=None, password_r=None, username_r=None, email_r=None, category_r=None, notes_r=None):
         # Name: self.rename_category_window
@@ -1136,8 +1154,14 @@ class PasswordManagerApp:
         self.rename_category_window.transient(self.root)
 
         # Set window close event and open status
-        self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("rename_category_window"))
-        self.rename_category_window.bind("<Escape>", lambda _: self.on_screen_close("rename_category_window"))
+        # self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("rename_category_window"))
+        # self.rename_category_window.bind("<Escape>", lambda _: self.on_screen_close("rename_category_window"))
+        self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_rename_category_window_close(
+            service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
+        ))
+        self.rename_category_window.bind("<Escape>", lambda _: self.on_rename_category_window_close(
+            service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
+        ))
         self.on_screen_open("rename_category_window")
 
         # Inner functions
@@ -1151,16 +1175,20 @@ class PasswordManagerApp:
                 return
             if new_category == category:
                 self.rename_category_window.destroy()
+                self.manage_categories_window.destroy()
+                self.show_manage_categories(
+                    service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=new_category, notes_r=notes_r
+                )
                 return
             
             if self.rename_category(category, new_category):
                 # Get current window position
                 self.rename_category_window.destroy()
                 self.manage_categories_window.destroy()
-                category_r = new_category
                 self.show_manage_categories(
-                    service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
+                    service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=new_category, notes_r=notes_r
                 )
+                return
 
         ttk.Label(self.rename_category_window, text="Category name:").pack(pady=10)
         category_entry = ttk.Entry(self.rename_category_window, width=50)
