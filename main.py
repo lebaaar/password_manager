@@ -534,6 +534,7 @@ class PasswordManagerApp:
                     )
             )
             view_button.pack(side="right", anchor="e")
+            view_button.service_name = service
             view_button.bind(
                 "<Return>",
                 lambda _, s=service, p=password, u=username, e=email, c=category, n=notes: 
@@ -553,7 +554,7 @@ class PasswordManagerApp:
 
             self.password_views.append(view_button)
 
-        self.search_entry.focus_set()
+
 
     def on_screen_close(self, screen):
         if screen == "root_window":
@@ -563,7 +564,16 @@ class PasswordManagerApp:
             self.password_setter_window_open = False
             self.password_setter_window.destroy()
             self.update_password_display()
-            self.search_entry.focus_set()
+            # Try to set focus to the view button that was clicked
+            try:
+                s = self.password_setter_window.current_service
+                for view in self.password_views:
+                    if view.service_name == s:
+                        view.focus_set()
+                        break
+            except:
+                # Fallback to search entry focus set
+                self.search_entry.focus_set()
             self.root.lift()
         elif screen == "manage_categories_window":
             self.manage_categories_window_open = False
@@ -799,8 +809,16 @@ class PasswordManagerApp:
 
         # Inner functions        
         def store_key_toggle():
-            self.store_key_var.set(not self.store_key_var.get())
-            self.update_settings(store_key=self.store_key_var.get())
+            current_state = self.get_settings()["store_key"]
+            new_state = not current_state
+            self.store_key_var.set(new_state)
+            self.update_settings(store_key=new_state)
+            if new_state:
+                enc.save_key_to_file(self.key)
+                enc.remove_known_value()
+            else:
+                enc.save_known_value(self.key)
+                enc.remove_key_file()
 
         def show_passwords_toggle():
             self.show_passwords_var.set(not self.show_passwords_var.get())
@@ -899,7 +917,7 @@ class PasswordManagerApp:
             left_frame, 
             text="Store key after closing", 
             variable=self.store_key_var, 
-            command=lambda: self.update_settings(store_key=self.store_key_var.get()))
+            command=store_key_toggle)
         self.store_key_checkbox.pack(pady=5, side="bottom")
         self.store_key_checkbox.bind("<Return>", lambda _: store_key_toggle())
 
@@ -975,6 +993,7 @@ class PasswordManagerApp:
         self.password_setter_window.grab_set()
         self.password_setter_window.transient(self.root)
         self.password_setter_window.title("Add Password")
+        self.password_setter_window.current_service = service_plain
         
         # Set window close event and open status
         self.password_setter_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("password_setter_window"))
