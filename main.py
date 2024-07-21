@@ -107,6 +107,29 @@ class PasswordManagerApp:
                 with open(vault_file_path, "w") as file:
                     file.write("{}")
 
+    def backup_files(self):
+        """
+            Backup: vault.json, categories.json, settings.json
+            If master password is remebmered by the user, he can manually derive encryption key from it and use it to decrypt the files
+            Method to derive encryption key from master password is in encryption.py
+            Salt used is hardcoded: $2b$12$3aaRmzcuUoWE0ond.2xMyu
+        """
+        settings = self.get_settings()
+        backup_dir_path = settings["backup_dir_path"]
+
+        if os.path.isfile(backup_dir_path):
+            backup_dir_path = os.path.dirname(backup_dir_path)
+        if not os.path.exists(backup_dir_path):
+            os.makedirs(backup_dir_path)
+        
+        # Backup files
+        files = ["vault.json", "categories.json", "settings.json"]
+        for file in files:
+            try:
+                shutil.copy(file, backup_dir_path)
+            except:
+                pass
+
 
 
     # Auth management
@@ -374,17 +397,19 @@ class PasswordManagerApp:
         with open("settings.json", "r") as file:
             return json.load(file)
         
-    def update_settings(self, store_key=None, show_passwords=None):
+    def update_settings(self, store_key=None, show_passwords=None, backup_dir_path=None):
         try:
             with open("settings.json", "r") as file:
                 settings = json.load(file)
         except:
-            settings = {"store_key": False, "display_passwords": True}
+            settings = {"store_key": False, "display_passwords": True, "backup_dir_path": None}
         
         if store_key is not None:
             settings["store_key"] = store_key
         if show_passwords is not None:
             settings["display_passwords"] = show_passwords
+        if backup_dir_path is not None:
+            settings["backup_dir_path"] = backup_dir_path
         
         with open("settings.json", "w") as file:
             json.dump(settings, file)
@@ -1333,9 +1358,12 @@ def main():
                 # Save known value file and remove key file
                 enc.save_known_value(app_instance.key)
                 enc.remove_key_file()
+            
+            # Backup
+            app_instance.backup_files()
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {e}")
-    
+            messagebox.showerror("Error", f"An error occurred: {e}")    
+
     # Key binding methods
     def control_f():
         try:
