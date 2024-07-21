@@ -1324,36 +1324,39 @@ class PasswordManagerApp:
                 messagebox.showerror("Error", "Passwords do not match")
                 return
             
+            if new_password == old_password:
+                messagebox.showerror("Error", "New password cannot be the same as the old password")
+                return
+            
             sure = messagebox.askyesno("Are you sure?", "Are you sure you want to change the master password?")
             if not sure:
-                self.change_master_password_window.destroy()
                 return
             
             # Setup new master password and encrypt current content with new key
             new_key = enc.setup_master_password(new_password, current_store_key_setting)
+            new_vault = {}
+            new_content = {} 
             with open("vault.json", "r") as file:
                 vault = json.load(file)
-            for _, content in vault.items():
-                old_encrypted_username = content["username"]
-                old_encrypted_password = content["password"]
-                old_encrypted_email = content["email"]
-                old_encrypted_category = content["category"]
-                old_encrypted_notes = content["notes"]
-
-                old_plain_username = enc.decrypt_content(old_encrypted_username, self.key)
-                old_plain_password = enc.decrypt_content(old_encrypted_password, self.key)
-                old_plain_email = enc.decrypt_content(old_encrypted_email, self.key)
-                old_plain_category = enc.decrypt_content(old_encrypted_category, self.key)
-                old_plain_notes = enc.decrypt_content(old_encrypted_notes, self.key)
-
-                content["username"] = enc.encrypt_content(old_plain_username, new_key).decode()
-                content["password"] = enc.encrypt_content(old_plain_password, new_key).decode()
-                content["email"] = enc.encrypt_content(old_plain_email, new_key).decode()
-                content["category"] = enc.encrypt_content(old_plain_category, new_key).decode()
-                content["notes"] = enc.encrypt_content(old_plain_notes, new_key).decode()
+            for service, content in vault.items():
+                for key, value in content.items():
+                    if not value:
+                        new_content[key] = value
+                        continue
+                    if key in ["category", "timestamp"]:
+                        new_content[key] = value
+                        continue
+                    # Decrypt the old content and encrypt with new key
+                    value_plain = enc.decrypt_content(value, self.key)
+                    if not value_plain:
+                        # Decryption failed
+                        raise DecryptionError(f"Decryption failed for {service} - {key}")
+                    new_content[key] = enc.encrypt_content(value_plain, new_key).decode()
+                
+                new_vault[service] = new_content
 
             with open("vault.json", "w") as file:
-                json.dump(vault, file)
+                json.dump(new_vault, file)
             
             # Change key
             self.key = new_key
@@ -1364,6 +1367,7 @@ class PasswordManagerApp:
         self.add_placeholder(old_password_entry, old_password_entry.placeholder_text)
         old_password_entry.bind("<FocusIn>", self.clear_placeholder)
         old_password_entry.bind("<FocusOut>", self.restore_placeholder)
+        old_password_entry.bind("<Return>", lambda _: new_password_entry.focus_set())
         old_password_entry.pack(pady=5)
         old_password_entry.focus_set()
 
@@ -1372,6 +1376,7 @@ class PasswordManagerApp:
         self.add_placeholder(new_password_entry, new_password_entry.placeholder_text)
         new_password_entry.bind("<FocusIn>", self.clear_placeholder)
         new_password_entry.bind("<FocusOut>", self.restore_placeholder)
+        new_password_entry.bind("<Return>", lambda _: confirm_password_entry.focus_set())
         new_password_entry.pack(pady=5)
 
         confirm_password_entry = ttk.Entry(self.change_master_password_window, width=40)
@@ -1382,7 +1387,7 @@ class PasswordManagerApp:
         confirm_password_entry.pack(pady=5)
         confirm_password_entry.bind("<Return>", lambda _: change_master_password())
 
-        change_password_button = ttk.Button(self.change_master_password_window, text="Change password", command=change_master_password)
+        change_password_button = ttk.Button(self.change_master_password_window, text="Change Master Password", command=change_master_password)
         change_password_button.pack(pady=10)
         change_password_button.bind("<Return>", lambda _: change_master_password())
 
