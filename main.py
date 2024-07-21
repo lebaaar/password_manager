@@ -319,14 +319,19 @@ class PasswordManagerApp:
             return None
         
         content = vault[service_plain]
-        # Decrypt content - all content is encrypted excpet timestamp and key (service name)
         for key, value in content.items():
-            # Timestamp is not encrypted
+            # Skip decryption of empty values - ""
+            if not value:
+                return_content[key] = ""
+                continue
+            # Skip decryption of timestamp and category - not encrypted
             if key in ["timestamp", "category"]:
                 return_content[key] = value
                 continue
-            value = enc.decrypt_content(value, self.key)
-            return_content[key] = value
+            decrypted_value = enc.decrypt_content(value, self.key)
+            if not decrypted_value:
+                raise DecryptionError(f"Decryption failed for {service_plain} - {key}")
+            return_content[key] = decrypted_value
         
         return return_content
 
@@ -336,6 +341,7 @@ class PasswordManagerApp:
             overwrite=False, prefered_key=None, rename_service_to_plain=None
         ):
         # Encrypts content and saves it to vault.json
+        # Returns True if successful, False if failed/cancelled
 
         # Ensure vault.json exists
         if not os.path.exists("vault.json"):
@@ -345,10 +351,12 @@ class PasswordManagerApp:
         with open("vault.json", "r") as file:
             vault = json.load(file)
 
+        # Overwrite is only True in change mode
         if not overwrite and service_plain in vault:
-            overwrite = messagebox.askyesno("Overwrite", f"Content for {service_plain} already exists. Do you want to overwrite it?")
-            if not overwrite:
-                return
+            # Add mode
+            overwrite_message = messagebox.askyesno("Overwrite", f"Content for {service_plain} already exists. Do you want to overwrite it?")
+            if not overwrite_message:
+                return False
         
         if rename_service_to_plain:
             # Verify if service exists
@@ -356,39 +364,33 @@ class PasswordManagerApp:
                 vault[rename_service_to_plain] = vault.pop(service_plain)
                 service_plain = rename_service_to_plain
         
+        # Save old timestamp
+        current_timestamp = vault[service_plain]["timestamp"] if service_plain in vault else int(time.time())
         if prefered_key:
-            encrypted_password = enc.encrypt_content(password_plain, prefered_key).decode()
-            encrypted_username = enc.encrypt_content(username_plain, prefered_key).decode()
-            encrypted_email = enc.encrypt_content(email_plain, prefered_key).decode()
-            encrypted_notes = enc.encrypt_content(notes_plain, prefered_key).decode()
             vault[service_plain] = {
-                "username": encrypted_username,
-                "email": encrypted_email,
-                "password": encrypted_password,
-                "category": category_plain,
-                "notes": encrypted_notes,
-                "timestamp": int(time.time())
+                "username": enc.encrypt_content(username_plain, prefered_key).decode() if username_plain else "",
+                "email": enc.encrypt_content(email_plain, prefered_key).decode() if email_plain else "",
+                "password": enc.encrypt_content(password_plain, prefered_key).decode(),
+                "category": category_plain if category_plain else "",
+                "notes": enc.encrypt_content(notes_plain, prefered_key).decode() if notes_plain else "",
+                "timestamp": current_timestamp
             }
             with open("vault.json", "w") as file:
                 json.dump(vault, file)
         else:
-            encrypted_password = enc.encrypt_content(password_plain, self.key).decode()
-            encrypted_username = enc.encrypt_content(username_plain, self.key).decode()
-            encrypted_email = enc.encrypt_content(email_plain, self.key).decode()
-            encrypted_notes = enc.encrypt_content(notes_plain, self.key).decode()
             vault[service_plain] = {
-                "username": encrypted_username,
-                "email": encrypted_email,
-                "password": encrypted_password,
-                "category": category_plain,
-                "notes": encrypted_notes,
-                "timestamp": int(time.time())
+                "username": enc.encrypt_content(username_plain, self.key).decode() if username_plain else "",
+                "email": enc.encrypt_content(email_plain, self.key).decode() if email_plain else "",
+                "password": enc.encrypt_content(password_plain, self.key).decode(),
+                "category": category_plain if category_plain else "",
+                "notes": enc.encrypt_content(notes_plain, self.key).decode() if notes_plain else "",
+                "timestamp": current_timestamp
             }
             with open("vault.json", "w") as file:
                 json.dump(vault, file)
             
-        self.update_password_display()
-        self.adjust_window_size()
+        # Success
+        return True
 
     def delete_service_content(self, service_plain):
         sure = messagebox.askyesno("Are you sure?", f"Are you sure you want to delete the content for {service_plain}?")
@@ -936,28 +938,31 @@ class PasswordManagerApp:
                 if self.get_service_content(service_plain) is not None and service_plain != original_service_plain:
                     messagebox.showerror("Error", f"Service {service_plain} already exists")
                     return
-                self.save_service_contnet(
+                result = self.save_service_contnet(
                     service_plain=original_service_plain, 
                     password_plain=password_plain, 
-                    username_plain=username_plain,
-                    email_plain=email_plain,
+                    username_plain=username_plain if username_plain else "",
+                    email_plain=email_plain if email_plain else "",
                     category_plain="" if category_plain == "None" else category_plain,
-                    notes_plain=notes_plain,
+                    notes_plain=notes_plain if notes_plain else "",
                     overwrite=True,
                     prefered_key=None,
                     rename_service_to_plain=service_plain
                 )
             else:
-                self.save_service_contnet(
+                result = self.save_service_contnet(
                     service_plain=service_plain, 
                     password_plain=password_plain, 
-                    username_plain=username_plain,
-                    email_plain=email_plain,
+                    username_plain=username_plain if username_plain else "",
+                    email_plain=email_plain if email_plain else "",
                     category_plain="" if category_plain == "None" else category_plain,
-                    notes_plain=notes_plain
+                    notes_plain=notes_plain if notes_plain else "",
+                    overwrite=False,
                 )
-            self.password_setter_window.destroy()
-            self.update_password_display()
+            
+            if result:
+                self.password_setter_window.destroy()
+                self.update_password_display()
 
         # Check if window is already open
         if self.password_setter_window_open and self.password_setter_window and self.password_setter_window.winfo_exists():
