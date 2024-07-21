@@ -1,5 +1,6 @@
 import subprocess
 import os
+import shutil
 import sys
 import json
 import time
@@ -75,13 +76,29 @@ class PasswordManagerApp:
         except:
             return False
 
+    def validate_vault(self):
+        keys = ["username", "email", "password", "category", "notes", "timestamp"]
+        with open("vault.json", "r") as file:
+            vault = json.load(file)
+        if not vault:
+            return False
+        for service, content in vault.items():
+            for key in keys:
+                if key not in content:
+                    return False
+        return True
+    
     def ensure_files(self):
         vault_file_path = "vault.json"
         categories_file_path = "categories.json"
         settings_file_path = "settings.json"
+        backup_dir_path = "C:\\Backups\\password_manager"
+        if not os.path.exists(backup_dir_path):
+            os.makedirs(backup_dir_path)
         settings_template = {
             "store_key": False,
-            "display_passwords": True
+            "display_passwords": True,
+            "backup_dir_path": backup_dir_path
         }
 
         # Ensure categories.json exists
@@ -208,34 +225,35 @@ class PasswordManagerApp:
         else:
             messagebox.showerror("Error", "Category already exists")
 
-    def remove_category(self, category):
+    def remove_category(self, category_plain):
         categories = self.get_categories()
+
         # Check if category exists
-        if category not in categories:
+        if category_plain not in categories:
             messagebox.showerror("Error", "Category does not exist")
 
         # Check if category is in use
         with open("vault.json", "r") as file:
             vault = json.load(file)
         for _, content in vault.items():
-            if content["category"] == category:
+            if content["category"] == category_plain:
                 messagebox.showerror("Error", "Category is in use, cannot delete")
                 return
         
-        categories.remove(category)
+        categories.remove(category_plain)
         with open("categories.json", "w") as file:
             json.dump(categories, file)
 
-    def rename_category(self, old_category, new_category):
+    def rename_category(self, old_category_plain, new_category_plain):
         categories = self.get_categories()
 
         # Check if category exists
-        if old_category not in categories:
+        if old_category_plain not in categories:
             messagebox.showerror("Error", "Category does not exist")
             return False
         
         # Check duplicates
-        if new_category in categories:
+        if new_category_plain in categories:
             messagebox.showerror("Error", "Category already exists")
             return False
         
@@ -243,22 +261,22 @@ class PasswordManagerApp:
         with open("vault.json", "r") as file:
             vault = json.load(file)
         for _, content in vault.items():
-            if content["category"] == old_category:
-                sure = messagebox.askyesno("Category in use", f"Category {old_category} is in use. Are you sure you want to rename it?")
+            if content["category"] == old_category_plain:
+                sure = messagebox.askyesno("Category in use", f"Category {old_category_plain} is in use. Are you sure you want to rename it?")
                 if not sure:
                     return False
                 break
         
         # Rename category
-        categories.remove(old_category)
-        categories.append(new_category)
+        categories.remove(old_category_plain)
+        categories.append(new_category_plain)
         with open("categories.json", "w") as file:
             json.dump(categories, file)
 
         # Update vault.json
         for _, content in vault.items():
-            if content["category"] == old_category:
-                content["category"] = new_category
+            if content["category"] == old_category_plain:
+                content["category"] = new_category_plain
         with open("vault.json", "w") as file:
             json.dump(vault, file)
         return True
@@ -304,7 +322,7 @@ class PasswordManagerApp:
         # Decrypt content - all content is encrypted excpet timestamp and key (service name)
         for key, value in content.items():
             # Timestamp is not encrypted
-            if key == "timestamp":
+            if key in ["timestamp", "category"]:
                 return_content[key] = value
                 continue
             value = enc.decrypt_content(value, self.key)
@@ -343,12 +361,11 @@ class PasswordManagerApp:
             encrypted_username = enc.encrypt_content(username_plain, prefered_key).decode()
             encrypted_email = enc.encrypt_content(email_plain, prefered_key).decode()
             encrypted_notes = enc.encrypt_content(notes_plain, prefered_key).decode()
-            encrypted_category = enc.encrypt_content(category_plain, prefered_key).decode()
             vault[service_plain] = {
                 "username": encrypted_username,
                 "email": encrypted_email,
                 "password": encrypted_password,
-                "category": encrypted_category,
+                "category": category_plain,
                 "notes": encrypted_notes,
                 "timestamp": int(time.time())
             }
@@ -359,12 +376,11 @@ class PasswordManagerApp:
             encrypted_username = enc.encrypt_content(username_plain, self.key).decode()
             encrypted_email = enc.encrypt_content(email_plain, self.key).decode()
             encrypted_notes = enc.encrypt_content(notes_plain, self.key).decode()
-            encrypted_category = enc.encrypt_content(category_plain, self.key).decode()
             vault[service_plain] = {
                 "username": encrypted_username,
                 "email": encrypted_email,
                 "password": encrypted_password,
-                "category": encrypted_category,
+                "category": category_plain,
                 "notes": encrypted_notes,
                 "timestamp": int(time.time())
             }
@@ -502,20 +518,21 @@ class PasswordManagerApp:
             delete_button.bind("<Return>", lambda _, s=service: self.delete_service_content(s))
             delete_button.pack(padx=(0, 5))
 
-            change_button = ttk.Button(
+            view_button = ttk.Button(
                 right_frame, 
                 text="View", 
                 command=lambda s=service, p=password, u=username, e=email, c=category, n=notes: 
-                self.show_password_setter(
-                    service_plain=s,
-                    password_plain=p,
-                    username_plain=u,
-                    email_plain=e,
-                    category_plain=c,
-                    notes_plain=n)
+                    self.show_password_setter(
+                        service_plain=s,
+                        password_plain=p,
+                        username_plain=u,
+                        email_plain=e,
+                        category_plain=c,
+                        notes_plain=n
+                    )
             )
-            change_button.pack(side="right", anchor="e")
-            change_button.bind(
+            view_button.pack(side="right", anchor="e")
+            view_button.bind(
                 "<Return>",
                 lambda _, s=service, p=password, u=username, e=email, c=category, n=notes: 
                     self.show_password_setter(
@@ -532,7 +549,7 @@ class PasswordManagerApp:
             copy_button.pack(side="right", anchor="e", padx=5)
             copy_button.bind("<Return>", lambda _, p=password: copy_password(p))
 
-            self.password_views.append(change_button)
+            self.password_views.append(view_button)
 
         self.search_entry.focus_set()
 
@@ -1133,15 +1150,39 @@ class PasswordManagerApp:
             ttk.Label(frame, text=category, anchor="w").pack(side="left", fill="x", expand=True, padx=5)
 
             # Buttons
-            change_button = ttk.Button(frame, text="Rename", command=lambda c=category: self.show_rename_category(
-                category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
-            ))
+            change_button = ttk.Button(
+                frame, 
+                text="Rename", 
+                command=lambda c=category: 
+                    self.show_rename_category(
+                        category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
+                    )
+            )
             change_button.pack(side="left")
-            change_button.bind("<Return>", lambda _: change_button.invoke())
+            change_button.bind(
+                "<Return>", 
+                lambda _, c=category, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r: 
+                    self.show_rename_category(
+                    category=c,
+                    service_r=service_r,
+                    password_r=password_r,
+                    username_r=username_r,
+                    email_r=email_r,
+                    category_r=category_r,
+                    notes_r=notes_r
+                )
+            )
 
-            delete_button = ttk.Button(frame, text="Delete", command=lambda c=category: delete_category(c))
+            delete_button = ttk.Button(
+                frame,
+                text="Delete",
+                command=lambda c=category: delete_category(c)
+            )
             delete_button.pack(side="left")
-            delete_button.bind("<Return>", lambda _: delete_button.invoke())
+            delete_button.bind(
+                "<Return>",
+                lambda _, c=category: delete_category(c)
+            )
 
         # Add category entry
         self.new_category_entry = ttk.Entry(self.manage_categories_window, width=50)
@@ -1179,8 +1220,6 @@ class PasswordManagerApp:
         self.rename_category_window.transient(self.root)
 
         # Set window close event and open status
-        # self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("rename_category_window"))
-        # self.rename_category_window.bind("<Escape>", lambda _: self.on_screen_close("rename_category_window"))
         self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_rename_category_window_close(
             service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
         ))
