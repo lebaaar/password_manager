@@ -1,5 +1,6 @@
 import subprocess
 import os
+import shutil
 import sys
 import json
 import time
@@ -75,13 +76,29 @@ class PasswordManagerApp:
         except:
             return False
 
+    def validate_vault(self):
+        keys = ["username", "email", "password", "category", "notes", "timestamp"]
+        with open("vault.json", "r") as file:
+            vault = json.load(file)
+        if not vault:
+            return False
+        for service, content in vault.items():
+            for key in keys:
+                if key not in content:
+                    return False
+        return True
+    
     def ensure_files(self):
         vault_file_path = "vault.json"
         categories_file_path = "categories.json"
         settings_file_path = "settings.json"
+        backup_dir_path = "C:\\Backups\\password_manager"
+        if not os.path.exists(backup_dir_path):
+            os.makedirs(backup_dir_path)
         settings_template = {
             "store_key": False,
-            "display_passwords": True
+            "display_passwords": True,
+            "backup_dir_path": backup_dir_path
         }
 
         # Ensure categories.json exists
@@ -106,6 +123,29 @@ class PasswordManagerApp:
             if not self.validate_json(vault_file_path):
                 with open(vault_file_path, "w") as file:
                     file.write("{}")
+
+    def backup_files(self):
+        """
+            Backup: vault.json, categories.json, settings.json
+            If master password is remebmered by the user, he can manually derive encryption key from it and use it to decrypt the files
+            Method to derive encryption key from master password is in encryption.py
+            Salt used is hardcoded: $2b$12$3aaRmzcuUoWE0ond.2xMyu
+        """
+        settings = self.get_settings()
+        backup_dir_path = settings["backup_dir_path"]
+
+        if os.path.isfile(backup_dir_path):
+            backup_dir_path = os.path.dirname(backup_dir_path)
+        if not os.path.exists(backup_dir_path):
+            os.makedirs(backup_dir_path)
+        
+        # Backup files
+        files = ["vault.json", "categories.json", "settings.json"]
+        for file in files:
+            try:
+                shutil.copy(file, backup_dir_path)
+            except:
+                pass
 
 
 
@@ -185,34 +225,35 @@ class PasswordManagerApp:
         else:
             messagebox.showerror("Error", "Category already exists")
 
-    def remove_category(self, category):
+    def remove_category(self, category_plain):
         categories = self.get_categories()
+
         # Check if category exists
-        if category not in categories:
+        if category_plain not in categories:
             messagebox.showerror("Error", "Category does not exist")
 
         # Check if category is in use
         with open("vault.json", "r") as file:
             vault = json.load(file)
         for _, content in vault.items():
-            if content["category"] == category:
+            if content["category"] == category_plain:
                 messagebox.showerror("Error", "Category is in use, cannot delete")
                 return
         
-        categories.remove(category)
+        categories.remove(category_plain)
         with open("categories.json", "w") as file:
             json.dump(categories, file)
 
-    def rename_category(self, old_category, new_category):
+    def rename_category(self, old_category_plain, new_category_plain):
         categories = self.get_categories()
 
         # Check if category exists
-        if old_category not in categories:
+        if old_category_plain not in categories:
             messagebox.showerror("Error", "Category does not exist")
             return False
         
         # Check duplicates
-        if new_category in categories:
+        if new_category_plain in categories:
             messagebox.showerror("Error", "Category already exists")
             return False
         
@@ -220,22 +261,22 @@ class PasswordManagerApp:
         with open("vault.json", "r") as file:
             vault = json.load(file)
         for _, content in vault.items():
-            if content["category"] == old_category:
-                sure = messagebox.askyesno("Category in use", f"Category {old_category} is in use. Are you sure you want to rename it?")
+            if content["category"] == old_category_plain:
+                sure = messagebox.askyesno("Category in use", f"Category {old_category_plain} is in use. Are you sure you want to rename it?")
                 if not sure:
                     return False
                 break
         
         # Rename category
-        categories.remove(old_category)
-        categories.append(new_category)
+        categories.remove(old_category_plain)
+        categories.append(new_category_plain)
         with open("categories.json", "w") as file:
             json.dump(categories, file)
 
         # Update vault.json
         for _, content in vault.items():
-            if content["category"] == old_category:
-                content["category"] = new_category
+            if content["category"] == old_category_plain:
+                content["category"] = new_category_plain
         with open("vault.json", "w") as file:
             json.dump(vault, file)
         return True
@@ -278,14 +319,19 @@ class PasswordManagerApp:
             return None
         
         content = vault[service_plain]
-        # Decrypt content - all content is encrypted excpet timestamp and key (service name)
         for key, value in content.items():
-            # Timestamp is not encrypted
-            if key == "timestamp":
+            # Skip decryption of empty values - ""
+            if not value:
+                return_content[key] = ""
+                continue
+            # Skip decryption of timestamp and category - not encrypted
+            if key in ["timestamp", "category"]:
                 return_content[key] = value
                 continue
-            value = enc.decrypt_content(value, self.key)
-            return_content[key] = value
+            decrypted_value = enc.decrypt_content(value, self.key)
+            if not decrypted_value:
+                raise DecryptionError(f"Decryption failed for {service_plain} - {key}")
+            return_content[key] = decrypted_value
         
         return return_content
 
@@ -295,6 +341,7 @@ class PasswordManagerApp:
             overwrite=False, prefered_key=None, rename_service_to_plain=None
         ):
         # Encrypts content and saves it to vault.json
+        # Returns True if successful, False if failed/cancelled
 
         # Ensure vault.json exists
         if not os.path.exists("vault.json"):
@@ -304,10 +351,12 @@ class PasswordManagerApp:
         with open("vault.json", "r") as file:
             vault = json.load(file)
 
+        # Overwrite is only True in change mode
         if not overwrite and service_plain in vault:
-            overwrite = messagebox.askyesno("Overwrite", f"Content for {service_plain} already exists. Do you want to overwrite it?")
-            if not overwrite:
-                return
+            # Add mode
+            overwrite_message = messagebox.askyesno("Overwrite", f"Content for {service_plain} already exists. Do you want to overwrite it?")
+            if not overwrite_message:
+                return False
         
         if rename_service_to_plain:
             # Verify if service exists
@@ -315,41 +364,33 @@ class PasswordManagerApp:
                 vault[rename_service_to_plain] = vault.pop(service_plain)
                 service_plain = rename_service_to_plain
         
+        # Save old timestamp
+        current_timestamp = vault[service_plain]["timestamp"] if service_plain in vault else int(time.time())
         if prefered_key:
-            encrypted_password = enc.encrypt_content(password_plain, prefered_key).decode()
-            encrypted_username = enc.encrypt_content(username_plain, prefered_key).decode()
-            encrypted_email = enc.encrypt_content(email_plain, prefered_key).decode()
-            encrypted_notes = enc.encrypt_content(notes_plain, prefered_key).decode()
-            encrypted_category = enc.encrypt_content(category_plain, prefered_key).decode()
             vault[service_plain] = {
-                "username": encrypted_username,
-                "email": encrypted_email,
-                "password": encrypted_password,
-                "category": encrypted_category,
-                "notes": encrypted_notes,
-                "timestamp": int(time.time())
+                "username": enc.encrypt_content(username_plain, prefered_key).decode() if username_plain else "",
+                "email": enc.encrypt_content(email_plain, prefered_key).decode() if email_plain else "",
+                "password": enc.encrypt_content(password_plain, prefered_key).decode(),
+                "category": category_plain if category_plain else "",
+                "notes": enc.encrypt_content(notes_plain, prefered_key).decode() if notes_plain else "",
+                "timestamp": current_timestamp
             }
             with open("vault.json", "w") as file:
                 json.dump(vault, file)
         else:
-            encrypted_password = enc.encrypt_content(password_plain, self.key).decode()
-            encrypted_username = enc.encrypt_content(username_plain, self.key).decode()
-            encrypted_email = enc.encrypt_content(email_plain, self.key).decode()
-            encrypted_notes = enc.encrypt_content(notes_plain, self.key).decode()
-            encrypted_category = enc.encrypt_content(category_plain, self.key).decode()
             vault[service_plain] = {
-                "username": encrypted_username,
-                "email": encrypted_email,
-                "password": encrypted_password,
-                "category": encrypted_category,
-                "notes": encrypted_notes,
-                "timestamp": int(time.time())
+                "username": enc.encrypt_content(username_plain, self.key).decode() if username_plain else "",
+                "email": enc.encrypt_content(email_plain, self.key).decode() if email_plain else "",
+                "password": enc.encrypt_content(password_plain, self.key).decode(),
+                "category": category_plain if category_plain else "",
+                "notes": enc.encrypt_content(notes_plain, self.key).decode() if notes_plain else "",
+                "timestamp": current_timestamp
             }
             with open("vault.json", "w") as file:
                 json.dump(vault, file)
             
-        self.update_password_display()
-        self.adjust_window_size()
+        # Success
+        return True
 
     def delete_service_content(self, service_plain):
         sure = messagebox.askyesno("Are you sure?", f"Are you sure you want to delete the content for {service_plain}?")
@@ -374,17 +415,19 @@ class PasswordManagerApp:
         with open("settings.json", "r") as file:
             return json.load(file)
         
-    def update_settings(self, store_key=None, show_passwords=None):
+    def update_settings(self, store_key=None, show_passwords=None, backup_dir_path=None):
         try:
             with open("settings.json", "r") as file:
                 settings = json.load(file)
         except:
-            settings = {"store_key": False, "display_passwords": True}
+            settings = {"store_key": False, "display_passwords": True, "backup_dir_path": None}
         
         if store_key is not None:
             settings["store_key"] = store_key
         if show_passwords is not None:
             settings["display_passwords"] = show_passwords
+        if backup_dir_path is not None:
+            settings["backup_dir_path"] = backup_dir_path
         
         with open("settings.json", "w") as file:
             json.dump(settings, file)
@@ -477,20 +520,22 @@ class PasswordManagerApp:
             delete_button.bind("<Return>", lambda _, s=service: self.delete_service_content(s))
             delete_button.pack(padx=(0, 5))
 
-            change_button = ttk.Button(
+            view_button = ttk.Button(
                 right_frame, 
                 text="View", 
                 command=lambda s=service, p=password, u=username, e=email, c=category, n=notes: 
-                self.show_password_setter(
-                    service_plain=s,
-                    password_plain=p,
-                    username_plain=u,
-                    email_plain=e,
-                    category_plain=c,
-                    notes_plain=n)
+                    self.show_password_setter(
+                        service_plain=s,
+                        password_plain=p,
+                        username_plain=u,
+                        email_plain=e,
+                        category_plain=c,
+                        notes_plain=n
+                    )
             )
-            change_button.pack(side="right", anchor="e")
-            change_button.bind(
+            view_button.pack(side="right", anchor="e")
+            view_button.service_name = service
+            view_button.bind(
                 "<Return>",
                 lambda _, s=service, p=password, u=username, e=email, c=category, n=notes: 
                     self.show_password_setter(
@@ -507,9 +552,9 @@ class PasswordManagerApp:
             copy_button.pack(side="right", anchor="e", padx=5)
             copy_button.bind("<Return>", lambda _, p=password: copy_password(p))
 
-            self.password_views.append(change_button)
+            self.password_views.append(view_button)
 
-        self.search_entry.focus_set()
+
 
     def on_screen_close(self, screen):
         if screen == "root_window":
@@ -519,7 +564,16 @@ class PasswordManagerApp:
             self.password_setter_window_open = False
             self.password_setter_window.destroy()
             self.update_password_display()
-            self.search_entry.focus_set()
+            # Try to set focus to the view button that was clicked
+            try:
+                s = self.password_setter_window.current_service
+                for view in self.password_views:
+                    if view.service_name == s:
+                        view.focus_set()
+                        break
+            except:
+                # Fallback to search entry focus set
+                self.search_entry.focus_set()
             self.root.lift()
         elif screen == "manage_categories_window":
             self.manage_categories_window_open = False
@@ -755,8 +809,16 @@ class PasswordManagerApp:
 
         # Inner functions        
         def store_key_toggle():
-            self.store_key_var.set(not self.store_key_var.get())
-            self.update_settings(store_key=self.store_key_var.get())
+            current_state = self.get_settings()["store_key"]
+            new_state = not current_state
+            self.store_key_var.set(new_state)
+            self.update_settings(store_key=new_state)
+            if new_state:
+                enc.save_key_to_file(self.key)
+                enc.remove_known_value()
+            else:
+                enc.save_known_value(self.key)
+                enc.remove_key_file()
 
         def show_passwords_toggle():
             self.show_passwords_var.set(not self.show_passwords_var.get())
@@ -855,7 +917,7 @@ class PasswordManagerApp:
             left_frame, 
             text="Store key after closing", 
             variable=self.store_key_var, 
-            command=lambda: self.update_settings(store_key=self.store_key_var.get()))
+            command=store_key_toggle)
         self.store_key_checkbox.pack(pady=5, side="bottom")
         self.store_key_checkbox.bind("<Return>", lambda _: store_key_toggle())
 
@@ -894,28 +956,31 @@ class PasswordManagerApp:
                 if self.get_service_content(service_plain) is not None and service_plain != original_service_plain:
                     messagebox.showerror("Error", f"Service {service_plain} already exists")
                     return
-                self.save_service_contnet(
+                result = self.save_service_contnet(
                     service_plain=original_service_plain, 
                     password_plain=password_plain, 
-                    username_plain=username_plain,
-                    email_plain=email_plain,
+                    username_plain=username_plain if username_plain else "",
+                    email_plain=email_plain if email_plain else "",
                     category_plain="" if category_plain == "None" else category_plain,
-                    notes_plain=notes_plain,
+                    notes_plain=notes_plain if notes_plain else "",
                     overwrite=True,
                     prefered_key=None,
                     rename_service_to_plain=service_plain
                 )
             else:
-                self.save_service_contnet(
+                result = self.save_service_contnet(
                     service_plain=service_plain, 
                     password_plain=password_plain, 
-                    username_plain=username_plain,
-                    email_plain=email_plain,
+                    username_plain=username_plain if username_plain else "",
+                    email_plain=email_plain if email_plain else "",
                     category_plain="" if category_plain == "None" else category_plain,
-                    notes_plain=notes_plain
+                    notes_plain=notes_plain if notes_plain else "",
+                    overwrite=False,
                 )
-            self.password_setter_window.destroy()
-            self.update_password_display()
+            
+            if result:
+                self.password_setter_window.destroy()
+                self.update_password_display()
 
         # Check if window is already open
         if self.password_setter_window_open and self.password_setter_window and self.password_setter_window.winfo_exists():
@@ -928,6 +993,7 @@ class PasswordManagerApp:
         self.password_setter_window.grab_set()
         self.password_setter_window.transient(self.root)
         self.password_setter_window.title("Add Password")
+        self.password_setter_window.current_service = service_plain
         
         # Set window close event and open status
         self.password_setter_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("password_setter_window"))
@@ -1108,15 +1174,39 @@ class PasswordManagerApp:
             ttk.Label(frame, text=category, anchor="w").pack(side="left", fill="x", expand=True, padx=5)
 
             # Buttons
-            change_button = ttk.Button(frame, text="Rename", command=lambda c=category: self.show_rename_category(
-                category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
-            ))
+            change_button = ttk.Button(
+                frame, 
+                text="Rename", 
+                command=lambda c=category: 
+                    self.show_rename_category(
+                        category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
+                    )
+            )
             change_button.pack(side="left")
-            change_button.bind("<Return>", lambda _: change_button.invoke())
+            change_button.bind(
+                "<Return>", 
+                lambda _, c=category, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r: 
+                    self.show_rename_category(
+                    category=c,
+                    service_r=service_r,
+                    password_r=password_r,
+                    username_r=username_r,
+                    email_r=email_r,
+                    category_r=category_r,
+                    notes_r=notes_r
+                )
+            )
 
-            delete_button = ttk.Button(frame, text="Delete", command=lambda c=category: delete_category(c))
+            delete_button = ttk.Button(
+                frame,
+                text="Delete",
+                command=lambda c=category: delete_category(c)
+            )
             delete_button.pack(side="left")
-            delete_button.bind("<Return>", lambda _: delete_button.invoke())
+            delete_button.bind(
+                "<Return>",
+                lambda _, c=category: delete_category(c)
+            )
 
         # Add category entry
         self.new_category_entry = ttk.Entry(self.manage_categories_window, width=50)
@@ -1154,8 +1244,6 @@ class PasswordManagerApp:
         self.rename_category_window.transient(self.root)
 
         # Set window close event and open status
-        # self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("rename_category_window"))
-        # self.rename_category_window.bind("<Escape>", lambda _: self.on_screen_close("rename_category_window"))
         self.rename_category_window.protocol("WM_DELETE_WINDOW", lambda: self.on_rename_category_window_close(
             service=service_r, password=password_r, username=username_r, email=email_r, category=category_r, notes=notes_r
         ))
@@ -1255,36 +1343,39 @@ class PasswordManagerApp:
                 messagebox.showerror("Error", "Passwords do not match")
                 return
             
+            if new_password == old_password:
+                messagebox.showerror("Error", "New password cannot be the same as the old password")
+                return
+            
             sure = messagebox.askyesno("Are you sure?", "Are you sure you want to change the master password?")
             if not sure:
-                self.change_master_password_window.destroy()
                 return
             
             # Setup new master password and encrypt current content with new key
             new_key = enc.setup_master_password(new_password, current_store_key_setting)
+            new_vault = {}
+            new_content = {} 
             with open("vault.json", "r") as file:
                 vault = json.load(file)
-            for _, content in vault.items():
-                old_encrypted_username = content["username"]
-                old_encrypted_password = content["password"]
-                old_encrypted_email = content["email"]
-                old_encrypted_category = content["category"]
-                old_encrypted_notes = content["notes"]
-
-                old_plain_username = enc.decrypt_content(old_encrypted_username, self.key)
-                old_plain_password = enc.decrypt_content(old_encrypted_password, self.key)
-                old_plain_email = enc.decrypt_content(old_encrypted_email, self.key)
-                old_plain_category = enc.decrypt_content(old_encrypted_category, self.key)
-                old_plain_notes = enc.decrypt_content(old_encrypted_notes, self.key)
-
-                content["username"] = enc.encrypt_content(old_plain_username, new_key).decode()
-                content["password"] = enc.encrypt_content(old_plain_password, new_key).decode()
-                content["email"] = enc.encrypt_content(old_plain_email, new_key).decode()
-                content["category"] = enc.encrypt_content(old_plain_category, new_key).decode()
-                content["notes"] = enc.encrypt_content(old_plain_notes, new_key).decode()
+            for service, content in vault.items():
+                for key, value in content.items():
+                    if not value:
+                        new_content[key] = value
+                        continue
+                    if key in ["category", "timestamp"]:
+                        new_content[key] = value
+                        continue
+                    # Decrypt the old content and encrypt with new key
+                    value_plain = enc.decrypt_content(value, self.key)
+                    if not value_plain:
+                        # Decryption failed
+                        raise DecryptionError(f"Decryption failed for {service} - {key}")
+                    new_content[key] = enc.encrypt_content(value_plain, new_key).decode()
+                
+                new_vault[service] = new_content
 
             with open("vault.json", "w") as file:
-                json.dump(vault, file)
+                json.dump(new_vault, file)
             
             # Change key
             self.key = new_key
@@ -1295,6 +1386,7 @@ class PasswordManagerApp:
         self.add_placeholder(old_password_entry, old_password_entry.placeholder_text)
         old_password_entry.bind("<FocusIn>", self.clear_placeholder)
         old_password_entry.bind("<FocusOut>", self.restore_placeholder)
+        old_password_entry.bind("<Return>", lambda _: new_password_entry.focus_set())
         old_password_entry.pack(pady=5)
         old_password_entry.focus_set()
 
@@ -1303,6 +1395,7 @@ class PasswordManagerApp:
         self.add_placeholder(new_password_entry, new_password_entry.placeholder_text)
         new_password_entry.bind("<FocusIn>", self.clear_placeholder)
         new_password_entry.bind("<FocusOut>", self.restore_placeholder)
+        new_password_entry.bind("<Return>", lambda _: confirm_password_entry.focus_set())
         new_password_entry.pack(pady=5)
 
         confirm_password_entry = ttk.Entry(self.change_master_password_window, width=40)
@@ -1313,7 +1406,7 @@ class PasswordManagerApp:
         confirm_password_entry.pack(pady=5)
         confirm_password_entry.bind("<Return>", lambda _: change_master_password())
 
-        change_password_button = ttk.Button(self.change_master_password_window, text="Change password", command=change_master_password)
+        change_password_button = ttk.Button(self.change_master_password_window, text="Change Master Password", command=change_master_password)
         change_password_button.pack(pady=10)
         change_password_button.bind("<Return>", lambda _: change_master_password())
 
@@ -1333,9 +1426,12 @@ def main():
                 # Save known value file and remove key file
                 enc.save_known_value(app_instance.key)
                 enc.remove_key_file()
+            
+            # Backup
+            app_instance.backup_files()
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {e}")
-    
+            messagebox.showerror("Error", f"An error occurred: {e}")    
+
     # Key binding methods
     def control_f():
         try:
