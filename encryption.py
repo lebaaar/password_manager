@@ -94,7 +94,7 @@ def setup_master_password(master_password, save_key, delete_other_files=True):
 
 # Encryption and decryption of contnet
 def encrypt_content(plain_content, key):
-    if type(plain_content) != str:
+    if not isinstance(plain_content, str):
         raise ValueError("Content to be encrypted must be a string.")
     try:
         f = Fernet(key)
@@ -113,3 +113,4 @@ def decrypt_content(encrypted_content, key):
         return None
     except Exception as e:
         print(f"Decryption failed with error: {e}")
+        return None
