@@ -106,7 +106,7 @@ class PasswordManagerApp:
             with open(categories_file_path, "w") as file:
                 file.write("[]")
         
-        # Ensure settings.json exists and is not empty
+        # Ensure settings.json exists and contains all the needed info
         if not os.path.exists(settings_file_path) or os.path.getsize(settings_file_path) == 0:
             with open(settings_file_path, "w") as file:
                 json.dump(settings_template, file)
@@ -114,6 +114,18 @@ class PasswordManagerApp:
             if not self.validate_json(settings_file_path):
                 with open(settings_file_path, "w") as file:
                     file.write(json.dumps(settings_template))
+            else:
+                # Check if all keys are present
+                modified = False
+                with open(settings_file_path, "r") as file:
+                    settings = json.load(file)
+                for necessary_key in settings_template.keys():
+                    if necessary_key not in settings:
+                        settings[necessary_key] = settings_template[necessary_key]
+                        modified = True
+                if modified:
+                    with open(settings_file_path, "w") as file:
+                        json.dump(settings, file)
         
         # Ensure vault.json exists and is not empty
         if not os.path.exists(vault_file_path) or os.path.getsize(vault_file_path) == 0:
