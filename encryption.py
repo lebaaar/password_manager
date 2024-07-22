@@ -5,8 +5,8 @@ from cryptography.hazmat.primitives import hashes
 import base64
 import os
 
-SECRET_KEY_FILE = "secret.key"
-ENCRYPTED_KNOWN_VALUE_FILE = "known_value.bin"
+SECRET_KEY_FILE = f"{os.path.dirname(__file__)}/secret.key"
+ENCRYPTED_KNOWN_VALUE_FILE = f"{os.path.dirname(__file__)}/known_value.bin"
 KNOWN_VALUE_B = "This is a known value."
 
 def derive_fernet_key_from_password(plain_password):

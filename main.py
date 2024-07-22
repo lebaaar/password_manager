@@ -78,7 +78,7 @@ class PasswordManagerApp:
 
     def validate_vault(self):
         keys = ["username", "email", "password", "category", "notes", "timestamp"]
-        with open("vault.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
             vault = json.load(file)
         if not vault:
             return False
@@ -89,9 +89,9 @@ class PasswordManagerApp:
         return True
     
     def ensure_files(self):
-        vault_file_path = "vault.json"
-        categories_file_path = "categories.json"
-        settings_file_path = "settings.json"
+        vault_file_path = f"{os.path.dirname(__file__)}/vault.json"
+        categories_file_path = f"{os.path.dirname(__file__)}/categories.json"
+        settings_file_path = f"{os.path.dirname(__file__)}/settings.json"
         backup_dir_path = "C:\\Backups\\password_manager"
         if not os.path.exists(backup_dir_path):
             os.makedirs(backup_dir_path)
@@ -102,7 +102,7 @@ class PasswordManagerApp:
         }
 
         # Ensure categories.json exists
-        if not os.path.exists("categories.json"):
+        if not os.path.exists(f"{os.path.dirname(__file__)}/categories.json"):
             with open(categories_file_path, "w") as file:
                 file.write("[]")
         
@@ -140,7 +140,7 @@ class PasswordManagerApp:
             os.makedirs(backup_dir_path)
         
         # Backup files
-        files = ["vault.json", "categories.json", "settings.json"]
+        files = [f"{os.path.dirname(__file__)}/vault.json", f"{os.path.dirname(__file__)}/categories.json", f"{os.path.dirname(__file__)}/settings.json"]
         for file in files:
             try:
                 shutil.copy(file, backup_dir_path)
@@ -152,7 +152,7 @@ class PasswordManagerApp:
     # Auth management
     def check_key_presence(self):
         try:
-            if os.path.exists("secret.key") and os.path.getsize("secret.key") > 0:
+            if os.path.exists(f"{os.path.dirname(__file__)}/secret.key") and os.path.getsize(f"{os.path.dirname(__file__)}/secret.key") > 0:
                 return True
             return False
         except:
@@ -160,7 +160,7 @@ class PasswordManagerApp:
     
     def chcek_known_value_presence(self):
         try:
-            if os.path.exists("known_value.bin") and os.path.getsize("known_value.bin") > 0:
+            if os.path.exists(f"{os.path.dirname(__file__)}/known_value.bin") and os.path.getsize(f"{os.path.dirname(__file__)}/known_value.bin") > 0:
                 return True
             return False
         except:
@@ -201,7 +201,7 @@ class PasswordManagerApp:
             self.key = enc.derive_fernet_key_from_password(password)
             
             # Clear all stored passwords
-            with open("vault.json", "w") as file:
+            with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
                 file.write("{}")
                 
             self.clear_screen()
@@ -213,14 +213,14 @@ class PasswordManagerApp:
 
     # Categoy management
     def get_categories(self):
-        with open("categories.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/categories.json", "r") as file:
             return json.load(file)
 
     def add_category(self, category):
         categories = self.get_categories()
         if category not in categories:
             categories.append(category)
-            with open("categories.json", "w") as file:
+            with open(f"{os.path.dirname(__file__)}/categories.json", "w") as file:
                 json.dump(categories, file)
         else:
             messagebox.showerror("Error", "Category already exists")
@@ -233,7 +233,7 @@ class PasswordManagerApp:
             messagebox.showerror("Error", "Category does not exist")
 
         # Check if category is in use
-        with open("vault.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
             vault = json.load(file)
         for _, content in vault.items():
             if content["category"] == category_plain:
@@ -241,7 +241,7 @@ class PasswordManagerApp:
                 return
         
         categories.remove(category_plain)
-        with open("categories.json", "w") as file:
+        with open(f"{os.path.dirname(__file__)}/categories.json", "w") as file:
             json.dump(categories, file)
 
     def rename_category(self, old_category_plain, new_category_plain):
@@ -258,7 +258,7 @@ class PasswordManagerApp:
             return False
         
         # Check if category is in use
-        with open("vault.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
             vault = json.load(file)
         for _, content in vault.items():
             if content["category"] == old_category_plain:
@@ -270,14 +270,14 @@ class PasswordManagerApp:
         # Rename category
         categories.remove(old_category_plain)
         categories.append(new_category_plain)
-        with open("categories.json", "w") as file:
+        with open(f"{os.path.dirname(__file__)}/categories.json", "w") as file:
             json.dump(categories, file)
 
         # Update vault.json
         for _, content in vault.items():
             if content["category"] == old_category_plain:
                 content["category"] = new_category_plain
-        with open("vault.json", "w") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
             json.dump(vault, file)
         return True
 
@@ -288,7 +288,7 @@ class PasswordManagerApp:
         # Returns decrypted content
         return_content = {}
 
-        with open("vault.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
             vault = json.load(file)
         
         # Decrypt content
@@ -312,7 +312,7 @@ class PasswordManagerApp:
 
         return_content = {}
 
-        with open("vault.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
             vault = json.load(file)
 
         if service_plain not in vault:
@@ -344,11 +344,11 @@ class PasswordManagerApp:
         # Returns True if successful, False if failed/cancelled
 
         # Ensure vault.json exists
-        if not os.path.exists("vault.json"):
-            with open("vault.json", "w") as file:
+        if not os.path.exists(f"{os.path.dirname(__file__)}/vault.json"):
+            with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
                 file.write("{}")
                 
-        with open("vault.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
             vault = json.load(file)
 
         # Overwrite is only True in change mode
@@ -375,7 +375,7 @@ class PasswordManagerApp:
                 "notes": enc.encrypt_content(notes_plain, prefered_key).decode() if notes_plain else "",
                 "timestamp": current_timestamp
             }
-            with open("vault.json", "w") as file:
+            with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
                 json.dump(vault, file)
         else:
             vault[service_plain] = {
@@ -386,7 +386,7 @@ class PasswordManagerApp:
                 "notes": enc.encrypt_content(notes_plain, self.key).decode() if notes_plain else "",
                 "timestamp": current_timestamp
             }
-            with open("vault.json", "w") as file:
+            with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
                 json.dump(vault, file)
             
         # Success
@@ -396,14 +396,14 @@ class PasswordManagerApp:
         sure = messagebox.askyesno("Are you sure?", f"Are you sure you want to delete the content for {service_plain}?")
         if not sure:
             return
-        with open("vault.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
             vault = json.load(file)
         if service_plain not in vault:
             messagebox.showerror("Error", f"No content to match {service_plain}")
             return
         
         del vault[service_plain]
-        with open("vault.json", "w") as file:
+        with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
             json.dump(vault, file)
         self.update_password_display()
         self.adjust_window_size()            
@@ -412,12 +412,12 @@ class PasswordManagerApp:
 
     # Settings management
     def get_settings(self):
-        with open("settings.json", "r") as file:
+        with open(f"{os.path.dirname(__file__)}/settings.json", "r") as file:
             return json.load(file)
         
     def update_settings(self, store_key=None, show_passwords=None, backup_dir_path=None):
         try:
-            with open("settings.json", "r") as file:
+            with open(f"{os.path.dirname(__file__)}/settings.json", "r") as file:
                 settings = json.load(file)
         except:
             settings = {"store_key": False, "display_passwords": True, "backup_dir_path": None}
@@ -429,7 +429,7 @@ class PasswordManagerApp:
         if backup_dir_path is not None:
             settings["backup_dir_path"] = backup_dir_path
         
-        with open("settings.json", "w") as file:
+        with open(f"{os.path.dirname(__file__)}/settings.json", "w") as file:
             json.dump(settings, file)
 
     # UI management
@@ -706,7 +706,7 @@ class PasswordManagerApp:
 
             # Check if any passwords exist
             if ask_conformation:
-                with open("vault.json", "r") as file:
+                with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
                     vault = json.load(file)
                 if vault:
                     sure = messagebox.askyesno("Are you sure?", "Are you sure you want to create a new account? Some passwords are already stored, which  will be lost if you proceed.")
@@ -1355,7 +1355,7 @@ class PasswordManagerApp:
             new_key = enc.setup_master_password(new_password, current_store_key_setting)
             new_vault = {}
             new_content = {} 
-            with open("vault.json", "r") as file:
+            with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
                 vault = json.load(file)
             for service, content in vault.items():
                 for key, value in content.items():
@@ -1374,7 +1374,7 @@ class PasswordManagerApp:
                 
                 new_vault[service] = new_content
 
-            with open("vault.json", "w") as file:
+            with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
                 json.dump(new_vault, file)
             
             # Change key
@@ -1409,6 +1409,11 @@ class PasswordManagerApp:
         change_password_button = ttk.Button(self.change_master_password_window, text="Change Master Password", command=change_master_password)
         change_password_button.pack(pady=10)
         change_password_button.bind("<Return>", lambda _: change_master_password())
+
+
+
+# Helper methods    
+
 
 
 def main():
@@ -1472,7 +1477,7 @@ def main():
         root.lift()
         
         # Set icon
-        root.iconphoto(True, tkinter.PhotoImage(file="icon.png"))
+        root.iconphoto(True, tkinter.PhotoImage(file=f"{os.path.dirname(__file__)}/icon.png"))
         
         # Key bindings
         root.bind("<Control-f>", lambda _: control_f())
