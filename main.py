@@ -1366,14 +1366,16 @@ class PasswordManagerApp:
             # Setup new master password and encrypt current content with new key
             new_key = enc.setup_master_password(new_password, current_store_key_setting)
             new_vault = {}
-            new_content = {} 
             with open(f"{os.path.dirname(__file__)}/vault.json", "r") as file:
                 vault = json.load(file)
             for service, content in vault.items():
+                new_content = {}
                 for key, value in content.items():
+                    # Skip empty values
                     if not value:
                         new_content[key] = value
                         continue
+                    # Skip category and timestamp - not encrypted
                     if key in ["category", "timestamp"]:
                         new_content[key] = value
                         continue
@@ -1383,7 +1385,7 @@ class PasswordManagerApp:
                         # Decryption failed
                         raise DecryptionError(f"Decryption failed for {service} - {key}")
                     new_content[key] = enc.encrypt_content(value_plain, new_key).decode()
-                
+
                 new_vault[service] = new_content
 
             with open(f"{os.path.dirname(__file__)}/vault.json", "w") as file:
