@@ -1,3 +1,7 @@
+*.pyc
+*.pyo
+__pycache__/
+
 secret.key
 known_value.bin
 vault.json
