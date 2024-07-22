@@ -12,7 +12,7 @@ def install_and_import(package):
         subprocess.check_call([sys.executable, "-m", "pip", "install", package])
         __import__(package)
 
-packages = ["bcrypt", "cryptography", "tkinter", "Levenshtein", "tendo"]
+packages = ["bcrypt", "cryptography", "tkinter", "Levenshtein", "tendo", "ttkthemes"]
 for package in packages:
     install_and_import(package)
 
