@@ -468,7 +468,7 @@ class PasswordManagerApp:
 
         if not self.password_display:
             return
-        
+
         # Clear current display
         for widget in self.password_display.winfo_children():
             widget.destroy()
@@ -476,9 +476,9 @@ class PasswordManagerApp:
         # Clear password views
         self.password_views = []
 
-        # Get all content        
+        # Get all content
         all_content = self.get_all_service_content(
-            self.current_sort, 
+            self.current_sort,
             self.current_sort_order
         )
 
@@ -496,46 +496,50 @@ class PasswordManagerApp:
                 if content["category"] == self.current_filter_category:
                     filtered_content[service] = content
             all_content = filtered_content
-        
+
         # Apply current sorting
         all_content = self.sort_content(
-            all_content, 
+            all_content,
             self.current_sort,
             self.current_sort_order
         )
 
-        for service, content in all_content.items():
+        for i, (service, content) in enumerate(all_content.items()):
             username = content["username"]
             email = content["email"]
             password = content["password"]
             category = content["category"]
             notes = content.get("notes", None)
-            frame = ttk.Frame(self.password_display)
-            frame.pack(fill="x", pady=2, anchor="center")
 
-            left_frame = ttk.Frame(frame)
-            left_frame.pack(side="left", fill="x", expand=True)
+            info_frame = ttk.Frame(self.password_display)
+            info_frame.grid(row=i, column=0, padx=5, pady=5, sticky="w")
 
-            right_frame = ttk.Frame(frame)
-            right_frame.pack(side="right", fill="both", expand=True, anchor="center")
-
-            info_frame = ttk.Frame(left_frame)
-            info_frame.pack(side="top", fill="x", expand=True)
-            info_frame.pack(padx=(5, 0))
-
-            ttk.Label(info_frame, text=f"{service}", anchor="w", font=("Helvetica", 14)).pack(side="top", fill="x", expand=True)
-            ttk.Label(info_frame, text=f"{category if category else 'No category'}", anchor="w", font=("Helvetica", 10)).pack(side="top", fill="x", expand=True)
+            service_name_label = ttk.Label(
+                info_frame,
+                text=f"{service}",
+                font=("Helvetica", 16),
+                wraplength=200
+            )
+            service_name_label.pack(side="top", fill="x", expand=True)
+            category_name_label = ttk.Label(
+                info_frame,
+                text=f"{category if category else 'No category'}",
+                font=("Helvetica", 10),
+                wraplength=200
+            )
+            category_name_label.pack(side="top", fill="x", expand=True)
 
             # Buttons
-            delete_button = ttk.Button(right_frame, text="Delete", command=lambda s=service: self.delete_service_content(s))
-            delete_button.pack(side="right", anchor="e")
+            button_frame = ttk.Frame(self.password_display)
+            button_frame.grid(row=i, column=1, padx=5, pady=5, sticky="e")
+            delete_button = ttk.Button(button_frame, text="Delete", command=lambda s=service: self.delete_service_content(s))
+            delete_button.pack(padx=(0, 5), side="right")
             delete_button.bind("<Return>", lambda _, s=service: self.delete_service_content(s))
-            delete_button.pack(padx=(0, 5))
 
             view_button = ttk.Button(
-                right_frame, 
-                text="View", 
-                command=lambda s=service, p=password, u=username, e=email, c=category, n=notes: 
+                button_frame,
+                text="View",
+                command=lambda s=service, p=password, u=username, e=email, c=category, n=notes:
                     self.show_password_setter(
                         service_plain=s,
                         password_plain=p,
@@ -545,11 +549,11 @@ class PasswordManagerApp:
                         notes_plain=n
                     )
             )
-            view_button.pack(side="right", anchor="e")
+            view_button.pack(side="right", padx=5)
             view_button.service_name = service
             view_button.bind(
                 "<Return>",
-                lambda _, s=service, p=password, u=username, e=email, c=category, n=notes: 
+                lambda _, s=service, p=password, u=username, e=email, c=category, n=notes:
                     self.show_password_setter(
                         service_plain=s,
                         password_plain=p,
@@ -560,8 +564,8 @@ class PasswordManagerApp:
                     )
             )
 
-            copy_button = ttk.Button(right_frame, text="Copy", command=lambda p=password: copy_password(p))
-            copy_button.pack(side="right", anchor="e", padx=5)
+            copy_button = ttk.Button(button_frame, text="Copy", command=lambda p=password: copy_password(p))
+            copy_button.pack(side="right", padx=5)
             copy_button.bind("<Return>", lambda _, p=password: copy_password(p))
 
             self.password_views.append(view_button)
@@ -620,12 +624,19 @@ class PasswordManagerApp:
     def adjust_window_size(self, window=None):
         target_window = self.root if window is None else window
         target_window.update_idletasks()
+
+        if target_window == self.root:
+            target_window.geometry(f"850x500")
+            target_window.maxsize(850, 500)
+            target_window.minsize(850, 500)
+            return
+
         window_width = target_window.winfo_reqwidth()
         window_height = target_window.winfo_reqheight()
         screen_width = target_window.winfo_screenwidth()
         screen_height = target_window.winfo_screenheight()
-        window_width += 50 
-        window_height += 50 
+        window_width += 50
+        window_height += 50
         x = (screen_width / 2) - (window_width / 2)
         y = (screen_height / 2) - (window_height / 2)
         target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
@@ -813,13 +824,13 @@ class PasswordManagerApp:
 
     def show_main_screen(self):
         # Name: self.root (root_window)
-        
+
         # Set window close event and open status
         self.clear_screen()
         self.root.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("root_window"))
-        self.on_screen_open("root_window") 
+        self.on_screen_open("root_window")
 
-        # Inner functions        
+        # Inner functions
         def store_key_toggle():
             current_state = self.get_settings()["store_key"]
             new_state = not current_state
@@ -851,7 +862,7 @@ class PasswordManagerApp:
             self.current_sort_order = not self.current_sort_order
             self.sort_button.config(text="▲" if self.current_sort_order else "▼")
             self.update_password_display()
-        
+
         def on_sort_by():
             self.current_sort = sort_dropdown.get()
             self.update_password_display()
@@ -860,14 +871,19 @@ class PasswordManagerApp:
             self.current_filter_category = category_dropdown.get()
             self.update_password_display()
 
+        def on_frame_configure(canvas: tkinter.Canvas):
+            # Reset the scroll region to encompass the inner frame
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
         settings = self.get_settings()
 
         # Left side
-        left_frame = ttk.Frame(self.root)
-        left_frame.pack(side="left", fill="y", padx=5)
+        color = "light grey"
+        left_frame = tkinter.Frame(self.root, bg=color)
+        left_frame.pack(side="left", fill="y")
 
         # Search option
-        search_frame = ttk.Frame(left_frame)
+        search_frame = tkinter.Frame(left_frame, bg=color)
         search_frame.pack(pady=5)
         self.search_entry = ttk.Entry(search_frame, width=25)
         self.search_entry.pack(side="left")
@@ -881,9 +897,9 @@ class PasswordManagerApp:
         self.search_entry.bind("<Tab>", lambda _: sort_dropdown.focus_set())
 
         # Sort options
-        sort_frame = ttk.Frame(left_frame)
+        sort_frame = tkinter.Frame(left_frame, bg=color)
         sort_frame.pack(pady=5)
-        ttk.Label(sort_frame, text="Sort:").pack(side="left")
+        tkinter.Label(sort_frame, text="Sort:", bg=color).pack(side="left")
         sort_dropdown = ttk.Combobox(sort_frame, values=["Date", "Name", "Category"], state="readonly", width=10)
         sort_dropdown.current(0)
         sort_dropdown.pack(side="left")
@@ -895,12 +911,12 @@ class PasswordManagerApp:
         self.sort_button.bind("<Return>", lambda _: self.sort_button.invoke())
 
         # Filter by category
-        category_frame = ttk.Frame(left_frame)
-        category_frame.pack(pady=5)
-        ttk.Label(category_frame, text="Filter by category: ").pack(side="left")
+        category_frame = tkinter.Frame(left_frame, bg=color)
+        category_frame.pack(pady=5, padx=5)
+        tkinter.Label(category_frame, text="Filter by category: ", bg=color).pack(side="left")
         categories = self.get_categories()
         categories.append("No category")
-        categories.insert(0, "All")        
+        categories.insert(0, "All")
         category_dropdown = ttk.Combobox(category_frame, values=categories, state="readonly", width=15)
         category_dropdown.current(0)
         category_dropdown.pack(side="left")
@@ -915,9 +931,9 @@ class PasswordManagerApp:
         # self.show_passwords_var = tkinter.BooleanVar()
         # self.show_passwords_var.set(settings["display_passwords"])
         # show_passwords_checkbox = ttk.Checkbutton(
-        #     left_frame, 
-        #     text="Show passwords", 
-        #     variable=self.show_passwords_var, 
+        #     left_frame,
+        #     text="Show passwords",
+        #     variable=self.show_passwords_var,
         #     command=lambda: self.update_settings(show_passwords=self.show_passwords_var.get()))
         # show_passwords_checkbox.pack(pady=5, side="bottom")
         # show_passwords_checkbox.bind("<Return>", lambda _: show_passwords_toggle())
@@ -926,26 +942,39 @@ class PasswordManagerApp:
         self.store_key_var = tkinter.BooleanVar()
         self.store_key_var.set(settings["store_key"])
         self.store_key_checkbox = ttk.Checkbutton(
-            left_frame, 
-            text="Store key after closing", 
-            variable=self.store_key_var, 
-            command=store_key_toggle)
+            left_frame,
+            text="Store key after closing",
+            variable=self.store_key_var,
+            command=store_key_toggle,
+        )
+        style = ttk.Style()
+        style.configure("TCheckbutton", background=color)
         self.store_key_checkbox.pack(pady=5, side="bottom")
         self.store_key_checkbox.bind("<Return>", lambda _: store_key_toggle())
 
         # Right side
         right_frame = ttk.Frame(self.root)
-        right_frame.pack(side="right", fill="y", padx=5, pady=5, expand=True, anchor="center")
+        right_frame.pack(side="right", fill="both", padx=5, pady=5, expand=True, anchor="center")
 
         # Add password button
         add_password_button = ttk.Button(right_frame, text="Add password", command=self.show_password_setter)
         add_password_button.pack(pady=5)
         add_password_button.bind("<Return>", lambda _: add_password_button.invoke())
 
-        # Password content display
-        self.password_display = ttk.Frame(right_frame)
-        self.password_display.pack(pady=5)
-        
+        # Canvas for scrollable password display
+        self.canvas = tkinter.Canvas(right_frame)
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        self.scrollbar = ttk.Scrollbar(right_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar.pack(side="right", fill="y")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.password_display = ttk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=self.password_display, anchor='nw')
+
+        self.canvas.bind("<Configure>", lambda event, canvas=self.canvas: on_frame_configure(canvas))
+        self.password_display.grid_columnconfigure(0, weight=0, minsize=310)
+
         self.update_password_display()
         self.adjust_window_size()
 
@@ -1096,13 +1125,13 @@ class PasswordManagerApp:
         # Notes
         ttk.Label(self.password_setter_window, text="Notes:").pack(pady=1)
         notes_entry = ScrolledText(
-            self.password_setter_window, 
-            width=50, 
-            height=7,
+            self.password_setter_window,
+            width=50,
+            height=10,
             wrap=tkinter.WORD,
-            font=("Helvetica", 10)
+            font=("TkDefaultFont", 9)
         )
-        notes_entry.pack(pady=5)
+        notes_entry.pack(pady=5, padx=10, fill=tkinter.BOTH, expand=True)
         if notes_plain:
             notes_entry.insert(
                 tkinter.INSERT,
