@@ -570,6 +570,15 @@ class PasswordManagerApp:
 
             self.password_views.append(view_button)
 
+        # Update scroll region to match the new content
+        self.password_display.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        # Hide scrollbar if content fits in the view
+        if self.password_display.winfo_height() < self.canvas.winfo_height():
+            self.scrollbar.pack_forget()
+        else:
+            self.scrollbar.pack(side="right", fill="y")
 
 
     def on_screen_close(self, screen):
