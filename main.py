@@ -518,14 +518,14 @@ class PasswordManagerApp:
                 info_frame,
                 text=f"{service}",
                 font=("Helvetica", 16),
-                wraplength=200
+                wraplength=275
             )
             service_name_label.pack(side="top", fill="x", expand=True)
             category_name_label = ttk.Label(
                 info_frame,
                 text=f"{category if category else 'No category'}",
                 font=("Helvetica", 10),
-                wraplength=200
+                wraplength=275
             )
             category_name_label.pack(side="top", fill="x", expand=True)
 
@@ -1017,6 +1017,7 @@ class PasswordManagerApp:
                 )
 
             if result:
+                self.password_setter_window_open = False
                 self.password_setter_window.destroy()
                 self.update_password_display()
 
@@ -1209,7 +1210,13 @@ class PasswordManagerApp:
         for category in categories:
             frame = ttk.Frame(self.manage_categories_window)
             frame.pack(fill="x", pady=2)
-            ttk.Label(frame, text=category, anchor="w").pack(side="left", fill="x", expand=True, padx=5)
+            category_name_label = ttk.Label(
+                frame,
+                text=category,
+                anchor="w",
+                wraplength=250
+            )
+            category_name_label.pack(side="left", fill="x", expand=True, padx=5)
 
             # Buttons
             change_button = ttk.Button(
@@ -1277,7 +1284,9 @@ class PasswordManagerApp:
         # Set window
         self.rename_category_window = tkinter.Toplevel(self.root)
         self.rename_category_window.title("Rename Category")
-        self.rename_category_window.geometry("400x300")
+        self.rename_category_window.geometry("400x200")
+        self.remove_category.maxsize(400, 200)
+        self.remove_category.minsize(400, 200)
         self.rename_category_window.grab_set()
         self.rename_category_window.transient(self.root)
 
@@ -1498,6 +1507,20 @@ def main():
                 app_instance.password_views[-1].focus_set()
         except:
             pass
+    def scroll(event):
+        try:
+            if app_instance.root_window_open:
+                # Check if only main root window is open
+                if not (
+                    app_instance.password_setter_window_open or
+                    app_instance.manage_categories_window_open or
+                    app_instance.rename_category_window_open or
+                    app_instance.change_master_password_window_open
+                ):
+                    scroll_units = -1 * (event.delta // 120)
+                    app_instance.canvas.yview_scroll(scroll_units, "units")
+        except:
+            pass
 
     app_instance = None
     try:
@@ -1518,6 +1541,7 @@ def main():
         root.bind("<Control-n>", lambda _: control_n())
         for i in range(10):
             root.bind(f"{i}", lambda e, i=i: focus_password_view(i))
+        root.bind("<MouseWheel>", lambda event: scroll(event))
 
         root.mainloop()
     except FileExistsError as e:
