@@ -588,8 +588,7 @@ class PasswordManagerApp:
                         view.focus_set()
                         break
             except:
-                # Fallback to search entry focus set
-                self.search_entry.focus_set()
+                pass
             self.root.lift()
         elif screen == "manage_categories_window":
             self.manage_categories_window_open = False
@@ -602,7 +601,6 @@ class PasswordManagerApp:
         elif screen == "change_master_password_window":
             self.change_master_password_window_open = False
             self.change_master_password_window.destroy()
-            self.search_entry.focus_set()
             self.root.lift()
 
     def on_screen_open(self, screen):
@@ -887,7 +885,6 @@ class PasswordManagerApp:
         search_frame.pack(pady=5)
         self.search_entry = ttk.Entry(search_frame, width=25)
         self.search_entry.pack(side="left")
-        self.search_entry.focus_set()
         self.search_entry.placeholder_text = "Search"
         self.add_placeholder(self.search_entry, self.search_entry.placeholder_text)
         self.search_entry.bind("<FocusIn>", self.clear_placeholder)
