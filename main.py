@@ -51,6 +51,7 @@ class PasswordManagerApp:
 
         self.password_views = []
         self.password_display = None
+        self.root_scrollbar_visible = False
 
         # Tracking open winows
         self.root_window_open = False
@@ -466,6 +467,16 @@ class PasswordManagerApp:
             self.root.clipboard_append(password)
             self.root.update()
 
+        def update_scrollbar_visibility():
+            # At least 8 items are needed to show scrollbar
+            if self.password_display.winfo_height() < self.canvas.winfo_height() or len(all_content) < 8:
+                self.scrollbar.pack_forget()
+                self.root_scrollbar_visible = False
+            else:
+                self.scrollbar.pack(side="right", fill="y")
+                self.canvas.configure(yscrollcommand=self.scrollbar.set)
+                self.root_scrollbar_visible = True
+
         if not self.password_display:
             return
 
@@ -574,12 +585,7 @@ class PasswordManagerApp:
         self.password_display.update_idletasks()
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-        # Hide scrollbar if content fits in the view
-        if self.password_display.winfo_height() < self.canvas.winfo_height():
-            self.scrollbar.pack_forget()
-        else:
-            self.scrollbar.pack(side="right", fill="y")
-
+        update_scrollbar_visibility()
 
     def on_screen_close(self, screen):
         if screen == "root_window":
@@ -637,16 +643,19 @@ class PasswordManagerApp:
             target_window.maxsize(850, 500)
             target_window.minsize(850, 500)
             return
-
-        window_width = target_window.winfo_reqwidth()
-        window_height = target_window.winfo_reqheight()
-        screen_width = target_window.winfo_screenwidth()
-        screen_height = target_window.winfo_screenheight()
-        window_width += 50
-        window_height += 50
-        x = (screen_width / 2) - (window_width / 2)
-        y = (screen_height / 2) - (window_height / 2)
-        target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
+        elif target_window == self.manage_categories_window:
+            # TODO - fixed with scrollbar
+            pass
+        else:
+            window_width = target_window.winfo_reqwidth()
+            window_height = target_window.winfo_reqheight()
+            screen_width = target_window.winfo_screenwidth()
+            screen_height = target_window.winfo_screenheight()
+            window_width += 50
+            window_height += 50
+            x = (screen_width / 2) - (window_width / 2)
+            y = (screen_height / 2) - (window_height / 2)
+            target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
 
     def add_placeholder(self, entry, placeholder_text):
         if not isinstance(entry, tkinter.Entry):
@@ -855,6 +864,7 @@ class PasswordManagerApp:
             self.update_settings(show_passwords=self.show_passwords_var.get())
 
         def on_search():
+            # TODO - performance issue - don't update on every key press
             self.current_search_query = self.search_entry.get()
             self.update_password_display()
 
@@ -975,7 +985,7 @@ class PasswordManagerApp:
         self.scrollbar.pack(side="right", fill="y")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.password_display = ttk.Frame(self.canvas)
+        self.password_display = tkinter.Frame(self.canvas, bg="#f5f6f7")
         self.canvas.create_window((0, 0), window=self.password_display, anchor='nw')
 
         self.canvas.bind("<Configure>", lambda event, canvas=self.canvas: on_frame_configure(canvas))
@@ -1294,8 +1304,8 @@ class PasswordManagerApp:
         self.rename_category_window = tkinter.Toplevel(self.root)
         self.rename_category_window.title("Rename Category")
         self.rename_category_window.geometry("400x200")
-        self.remove_category.maxsize(400, 200)
-        self.remove_category.minsize(400, 200)
+        self.rename_category_window.maxsize(400, 200)
+        self.rename_category_window.minsize(400, 200)
         self.rename_category_window.grab_set()
         self.rename_category_window.transient(self.root)
 
@@ -1525,9 +1535,19 @@ def main():
                     app_instance.manage_categories_window_open or
                     app_instance.rename_category_window_open or
                     app_instance.change_master_password_window_open
-                ):
+                ) and app_instance.root_scrollbar_visible:
                     scroll_units = -1 * (event.delta // 120)
                     app_instance.canvas.yview_scroll(scroll_units, "units")
+                    return
+            elif app_instance.manage_categories_window_open:
+                # Check if only manage categories and root window are open
+                if not (
+                    app_instance.password_setter_window_open or
+                    app_instance.rename_category_window_open or
+                    app_instance.change_master_password_window_open
+                ):
+                    scroll_units = -1 * (event.delta // 120)
+                    app_instance.manage_categories_window.yview_scroll(scroll_units, "units")
         except:
             pass
 
