@@ -280,8 +280,8 @@ class PasswordManagerApp:
                 break
 
         # Rename category
-        categories.remove(old_category_plain)
-        categories.append(new_category_plain)
+        index = categories.index(old_category_plain)
+        categories[index] = new_category_plain
         with open(f"{os.path.dirname(__file__)}/categories.json", "w") as file:
             json.dump(categories, file)
 
