@@ -1233,7 +1233,7 @@ class PasswordManagerApp:
         self.c_scroll_frame = ttk.Frame(self.manage_categories_window, height=100)
         self.c_scroll_frame.pack(fill="x", side="top")
 
-        self.c_canvas = tkinter.Canvas(self.c_scroll_frame, height=300)
+        self.c_canvas = tkinter.Canvas(self.c_scroll_frame, height=300, highlightthickness=0)
         self.c_canvas.pack(side="left", fill="both", expand=True)
 
         self.c_scrollbar = ttk.Scrollbar(self.c_scroll_frame, orient="vertical", command=self.c_canvas.yview)
