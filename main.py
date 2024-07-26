@@ -1262,9 +1262,16 @@ class PasswordManagerApp:
             delete_button.pack(side="right")
             delete_button.bind("<Return>", lambda _, c=category: delete_category(c))
 
-            change_button = ttk.Button(button_frame, text="Rename", command=lambda c=category: self.show_rename_category(c))
+            change_button = ttk.Button(
+                button_frame,
+                text="Rename",
+                command=lambda c=category: self.show_rename_category(category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r)
+            )
             change_button.pack(side="right")
-            change_button.bind("<Return>", lambda _, c=category: self.show_rename_category(c))
+            change_button.bind(
+                "<Return>",
+                lambda _, c=category: self.show_rename_category(category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r)
+            )
 
 
         # Add category entry
