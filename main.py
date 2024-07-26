@@ -515,6 +515,10 @@ class PasswordManagerApp:
             self.current_sort_order
         )
 
+        # Style
+        style = ttk.Style()
+        style.configure("TLabel", background="#f0f0f0", foreground="#000000")
+
         for i, (service, content) in enumerate(all_content.items()):
             username = content["username"]
             email = content["email"]
@@ -522,6 +526,7 @@ class PasswordManagerApp:
             category = content["category"]
             notes = content.get("notes", None)
 
+            # Info content frame - service name + category
             info_frame = ttk.Frame(self.password_display)
             info_frame.grid(row=i, column=0, padx=5, pady=5, sticky="w")
 
@@ -529,7 +534,8 @@ class PasswordManagerApp:
                 info_frame,
                 text=f"{service}",
                 font=("Helvetica", 16),
-                wraplength=275
+                wraplength=275,
+                style="TLabel"
             )
             service_name_label.pack(side="top", fill="x", expand=True)
             category_name_label = ttk.Label(
@@ -541,7 +547,7 @@ class PasswordManagerApp:
             category_name_label.pack(side="top", fill="x", expand=True)
 
             # Buttons
-            button_frame = ttk.Frame(self.password_display)
+            button_frame = tkinter.Frame(self.password_display, bg="#f0f0f0")
             button_frame.grid(row=i, column=1, padx=5, pady=5, sticky="e")
             delete_button = ttk.Button(button_frame, text="Delete", command=lambda s=service: self.delete_service_content(s))
             delete_button.pack(padx=(0, 5), side="right")
@@ -558,7 +564,7 @@ class PasswordManagerApp:
                         email_plain=e,
                         category_plain=c,
                         notes_plain=n
-                    )
+                    ),
             )
             view_button.pack(side="right", padx=5)
             view_button.service_name = service
@@ -644,8 +650,10 @@ class PasswordManagerApp:
             target_window.minsize(850, 500)
             return
         elif target_window == self.manage_categories_window:
-            # TODO - fixed with scrollbar
-            pass
+            target_window.geometry(f"400x400")
+            target_window.maxsize(400, 400)
+            target_window.minsize(400, 400)
+            return
         else:
             window_width = target_window.winfo_reqwidth()
             window_height = target_window.winfo_reqheight()
@@ -713,6 +721,9 @@ class PasswordManagerApp:
         self.manage_categories_window.lift()
         self.new_category_entry.focus_set()
 
+    def on_frame_configure(self, canvas: tkinter.Canvas):
+        # Reset the scroll region to encompass the inner frame
+        canvas.configure(scrollregion=canvas.bbox("all"))
 
 
     # Screens
@@ -888,14 +899,10 @@ class PasswordManagerApp:
             self.current_filter_category = category_dropdown.get()
             self.update_password_display()
 
-        def on_frame_configure(canvas: tkinter.Canvas):
-            # Reset the scroll region to encompass the inner frame
-            canvas.configure(scrollregion=canvas.bbox("all"))
-
         settings = self.get_settings()
 
         # Left side
-        color = "light grey"
+        color = "#e8e8e8"
         left_frame = tkinter.Frame(self.root, bg=color)
         left_frame.pack(side="left", fill="y")
 
@@ -969,7 +976,7 @@ class PasswordManagerApp:
         self.store_key_checkbox.bind("<Return>", lambda _: store_key_toggle())
 
         # Right side
-        right_frame = ttk.Frame(self.root)
+        right_frame = tkinter.Frame(self.root, bg="#f0f0f0")
         right_frame.pack(side="right", fill="both", padx=5, pady=5, expand=True, anchor="center")
 
         # Add password button
@@ -978,17 +985,17 @@ class PasswordManagerApp:
         add_password_button.bind("<Return>", lambda _: add_password_button.invoke())
 
         # Canvas for scrollable password display
-        self.canvas = tkinter.Canvas(right_frame)
+        self.canvas = tkinter.Canvas(right_frame, highlightthickness=0)
         self.canvas.pack(side="left", fill="both", expand=True)
 
         self.scrollbar = ttk.Scrollbar(right_frame, orient="vertical", command=self.canvas.yview)
         self.scrollbar.pack(side="right", fill="y")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.password_display = tkinter.Frame(self.canvas, bg="#f5f6f7")
+        self.password_display = tkinter.Frame(self.canvas, bg="#f0f0f0")
         self.canvas.create_window((0, 0), window=self.password_display, anchor='nw')
 
-        self.canvas.bind("<Configure>", lambda event, canvas=self.canvas: on_frame_configure(canvas))
+        self.canvas.bind("<Configure>", lambda _, canvas=self.canvas: self.on_frame_configure(canvas))
         self.password_display.grid_columnconfigure(0, weight=0, minsize=310)
 
         self.update_password_display()
@@ -1218,59 +1225,47 @@ class PasswordManagerApp:
             )
 
         # Set window position
-        try:
-            if self.window_position:
-                x, y = self.window_position
-                self.manage_categories_window.geometry(f"400x200+{x}+{y}")
-        except Exception:
-            self.manage_categories_window.geometry("400x200")
+        self.manage_categories_window.geometry("400x400")
+        self.manage_categories_window.maxsize(400, 400)
+        self.manage_categories_window.minsize(400, 400)
+
+        # Scrollable frame
+        self.c_scroll_frame = ttk.Frame(self.manage_categories_window, height=100)
+        self.c_scroll_frame.pack(fill="x", side="top")
+
+        self.c_canvas = tkinter.Canvas(self.c_scroll_frame, height=300)
+        self.c_canvas.pack(side="left", fill="both", expand=True)
+
+        self.c_scrollbar = ttk.Scrollbar(self.c_scroll_frame, orient="vertical", command=self.c_canvas.yview)
+        self.c_scrollbar.pack(side="right", fill="y")
+        self.c_canvas.configure(yscrollcommand=self.c_scrollbar.set)
+
+        self.manage_categories_frame = ttk.Frame(self.c_canvas)
+        self.manage_categories_frame.bind("<Configure>", lambda _, canvas=self.c_canvas: self.on_frame_configure(canvas))
+        self.c_canvas.create_window((0, 0), window=self.manage_categories_frame, anchor="nw")
+        self.manage_categories_frame.grid_columnconfigure(0, weight=1, minsize=210)
 
         categories = self.get_categories()
-        for category in categories:
-            frame = ttk.Frame(self.manage_categories_window)
-            frame.pack(fill="x", pady=2)
-            category_name_label = ttk.Label(
-                frame,
-                text=category,
-                anchor="w",
-                wraplength=250
-            )
+        for i, category in enumerate(categories):
+            # Category name frame
+            cateogry_name_frame = ttk.Frame(self.manage_categories_frame)
+            cateogry_name_frame.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+
+            category_name_label = ttk.Label(cateogry_name_frame, text=category, wraplength=200)
             category_name_label.pack(side="left", fill="x", expand=True, padx=5)
 
             # Buttons
-            change_button = ttk.Button(
-                frame,
-                text="Rename",
-                command=lambda c=category:
-                    self.show_rename_category(
-                        category=c, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r
-                    )
-            )
-            change_button.pack(side="left")
-            change_button.bind(
-                "<Return>",
-                lambda _, c=category, service_r=service_r, password_r=password_r, username_r=username_r, email_r=email_r, category_r=category_r, notes_r=notes_r:
-                    self.show_rename_category(
-                    category=c,
-                    service_r=service_r,
-                    password_r=password_r,
-                    username_r=username_r,
-                    email_r=email_r,
-                    category_r=category_r,
-                    notes_r=notes_r
-                )
-            )
+            button_frame = ttk.Frame(self.manage_categories_frame)
+            button_frame.grid(row=i, column=1, padx=5, pady=5, sticky="e")
 
-            delete_button = ttk.Button(
-                frame,
-                text="Delete",
-                command=lambda c=category: delete_category(c)
-            )
-            delete_button.pack(side="left")
-            delete_button.bind(
-                "<Return>",
-                lambda _, c=category: delete_category(c)
-            )
+            delete_button = ttk.Button(button_frame, text="Delete", command=lambda c=category: delete_category(c))
+            delete_button.pack(side="right")
+            delete_button.bind("<Return>", lambda _, c=category: delete_category(c))
+
+            change_button = ttk.Button(button_frame, text="Rename", command=lambda c=category: self.show_rename_category(c))
+            change_button.pack(side="right")
+            change_button.bind("<Return>", lambda _, c=category: self.show_rename_category(c))
+
 
         # Add category entry
         self.new_category_entry = ttk.Entry(self.manage_categories_window, width=50)
@@ -1528,6 +1523,15 @@ def main():
             pass
     def scroll(event):
         try:
+            if event.type == tkinter.EventType.MouseWheel:
+                scroll_units = -1 * (event.delta // 120)
+            elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Down':
+                scroll_units = 1
+            elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Up':
+                scroll_units = -1
+            else:
+                return
+
             if app_instance.root_window_open:
                 # Check if only main root window is open
                 if not (
@@ -1536,24 +1540,23 @@ def main():
                     app_instance.rename_category_window_open or
                     app_instance.change_master_password_window_open
                 ) and app_instance.root_scrollbar_visible:
-                    scroll_units = -1 * (event.delta // 120)
                     app_instance.canvas.yview_scroll(scroll_units, "units")
                     return
-            elif app_instance.manage_categories_window_open:
+            if app_instance.manage_categories_window_open:
                 # Check if only manage categories and root window are open
-                if not (
-                    app_instance.password_setter_window_open or
-                    app_instance.rename_category_window_open or
-                    app_instance.change_master_password_window_open
+                if (
+                    app_instance.password_setter_window_open and
+                    not app_instance.rename_category_window_open and
+                    not app_instance.change_master_password_window_open
                 ):
-                    scroll_units = -1 * (event.delta // 120)
-                    app_instance.manage_categories_window.yview_scroll(scroll_units, "units")
+                    app_instance.c_canvas.yview_scroll(scroll_units, "units")
         except:
             pass
 
     app_instance = None
     try:
         root = ThemedTk(theme="arc")
+        root.configure(bg="#f0f0f0")
         app_instance = PasswordManagerApp(root)
         # Set window title
         root.title("Password Manager")
@@ -1570,7 +1573,9 @@ def main():
         root.bind("<Control-n>", lambda _: control_n())
         for i in range(10):
             root.bind(f"{i}", lambda e, i=i: focus_password_view(i))
-        root.bind("<MouseWheel>", lambda event: scroll(event))
+        root.bind_all("<MouseWheel>", lambda event: scroll(event))
+        root.bind_all("<Down>", lambda event: scroll(event))
+        root.bind_all("<Up>", lambda event: scroll(event))
 
         root.mainloop()
     except FileExistsError as e:
