@@ -93,13 +93,15 @@ class PasswordManagerApp:
         vault_file_path = f"{os.path.dirname(__file__)}/vault.json"
         categories_file_path = f"{os.path.dirname(__file__)}/categories.json"
         settings_file_path = f"{os.path.dirname(__file__)}/settings.json"
-        backup_dir_path = "C:\\Backups\\password_manager"
-        if not os.path.exists(backup_dir_path):
-            os.makedirs(backup_dir_path)
+        default_backup_dir_paths = ["C:\\Backups\\password_manager"]
+        backup_dir_paths = ["C:\\Backups\\password_manager"]
+        for backup_path in backup_dir_paths:
+            if not os.path.exists(backup_path):
+                os.makedirs(backup_path)
         settings_template = {
             "store_key": False,
             "display_passwords": True,
-            "backup_dir_path": backup_dir_path
+            "backup_dir_paths": backup_dir_paths
         }
 
         # Ensure categories.json exists
@@ -145,20 +147,28 @@ class PasswordManagerApp:
             Salt used is hardcoded: $2b$12$3aaRmzcuUoWE0ond.2xMyu
         """
         settings = self.get_settings()
-        backup_dir_path = settings["backup_dir_path"]
+        backup_dir_paths = settings["backup_dir_paths"]
 
-        if os.path.isfile(backup_dir_path):
-            backup_dir_path = os.path.dirname(backup_dir_path)
-        if not os.path.exists(backup_dir_path):
-            os.makedirs(backup_dir_path)
+        if not isinstance(backup_dir_paths, list):
+            backup_dir_paths = [backup_dir_paths]
 
         # Backup files
-        files = [f"{os.path.dirname(__file__)}/vault.json", f"{os.path.dirname(__file__)}/categories.json", f"{os.path.dirname(__file__)}/settings.json"]
-        for file in files:
-            try:
-                shutil.copy(file, backup_dir_path)
-            except:
-                pass
+        files = [
+            f"{os.path.dirname(__file__)}/vault.json",
+            f"{os.path.dirname(__file__)}/categories.json",
+            f"{os.path.dirname(__file__)}/settings.json"
+        ]
+        for backup_path in backup_dir_paths:
+            if os.path.isfile(backup_path):
+                backup_path = os.path.dirname(backup_path)
+            if not os.path.exists(backup_path):
+                os.makedirs(backup_path)
+
+            for file in files:
+                try:
+                    shutil.copy(file, backup_path)
+                except Exception as e:
+                    print(f"Error backing up {file} to {backup_path}: {e}")
 
 
 
@@ -428,20 +438,21 @@ class PasswordManagerApp:
         with open(f"{os.path.dirname(__file__)}/settings.json", "r") as file:
             return json.load(file)
 
-    def update_settings(self, store_key=None, show_passwords=None, backup_dir_path=None):
+    def update_settings(self, store_key=None, show_passwords=None, backup_dir_paths=None):
         try:
             with open(f"{os.path.dirname(__file__)}/settings.json", "r") as file:
                 settings = json.load(file)
         except:
-            settings = {"store_key": False, "display_passwords": True, "backup_dir_path": None}
+            settings = {"store_key": False, "display_passwords": True, "backup_dir_paths": None}
 
         if store_key is not None:
             settings["store_key"] = store_key
         if show_passwords is not None:
             settings["display_passwords"] = show_passwords
-        if backup_dir_path is not None:
-            settings["backup_dir_path"] = backup_dir_path
-
+        if backup_dir_paths is not None:
+            if not isinstance(backup_dir_paths, list):
+                backup_dir_paths = [backup_dir_paths]
+            settings["backup_dir_paths"] = backup_dir_paths
         with open(f"{os.path.dirname(__file__)}/settings.json", "w") as file:
             json.dump(settings, file)
 
