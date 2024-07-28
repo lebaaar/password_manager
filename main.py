@@ -94,14 +94,13 @@ class PasswordManagerApp:
         categories_file_path = f"{os.path.dirname(__file__)}/categories.json"
         settings_file_path = f"{os.path.dirname(__file__)}/settings.json"
         default_backup_dir_paths = ["C:\\Backups\\password_manager"]
-        backup_dir_paths = ["C:\\Backups\\password_manager"]
-        for backup_path in backup_dir_paths:
+        for backup_path in default_backup_dir_paths:
             if not os.path.exists(backup_path):
                 os.makedirs(backup_path)
         settings_template = {
             "store_key": False,
             "display_passwords": True,
-            "backup_dir_paths": backup_dir_paths
+            "backup_dir_paths": default_backup_dir_paths
         }
 
         # Ensure categories.json exists
@@ -144,7 +143,7 @@ class PasswordManagerApp:
             Backup: vault.json, categories.json, settings.json
             If master password is remebmered by the user, he can manually derive encryption key from it and use it to decrypt the files
             Method to derive encryption key from master password is in encryption.py
-            Salt used is hardcoded: $2b$12$3aaRmzcuUoWE0ond.2xMyu
+            Salt used is hardcoded in encryption.py
         """
         settings = self.get_settings()
         backup_dir_paths = settings["backup_dir_paths"]
@@ -156,7 +155,8 @@ class PasswordManagerApp:
         files = [
             f"{os.path.dirname(__file__)}/vault.json",
             f"{os.path.dirname(__file__)}/categories.json",
-            f"{os.path.dirname(__file__)}/settings.json"
+            f"{os.path.dirname(__file__)}/settings.json",
+            f"{os.path.dirname(__file__)}/manual-decryption.py"
         ]
         for backup_path in backup_dir_paths:
             if os.path.isfile(backup_path):
