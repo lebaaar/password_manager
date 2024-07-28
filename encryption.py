@@ -13,7 +13,7 @@ def derive_fernet_key_from_password(plain_password):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"<your-salt-here>",
+        salt=b"$2b$12$8JSVmmyb4R8qPEa3.qxIvO",
         iterations=100000,
         backend=default_backend()
     )
@@ -53,7 +53,7 @@ def verify_password_with_stored_key(plain_password):
     entered_key = base64.urlsafe_b64encode(PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"<your-salt-here>",
+        salt=b"$2b$12$8JSVmmyb4R8qPEa3.qxIvO",
         iterations=100000,
         backend=default_backend()
     ).derive(plain_password.encode()))
