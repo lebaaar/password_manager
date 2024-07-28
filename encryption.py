@@ -13,7 +13,7 @@ def derive_fernet_key_from_password(plain_password):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"$2b$12$3aaRmzcuUoWE0ond.2xMyu",
+        salt=b"<your-salt-here>",
         iterations=100000,
         backend=default_backend()
     )
@@ -53,7 +53,7 @@ def verify_password_with_stored_key(plain_password):
     entered_key = base64.urlsafe_b64encode(PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"$2b$12$3aaRmzcuUoWE0ond.2xMyu",
+        salt=b"<your-salt-here>",
         iterations=100000,
         backend=default_backend()
     ).derive(plain_password.encode()))
@@ -62,10 +62,10 @@ def verify_password_with_stored_key(plain_password):
 def verify_password_without_stored_key(plain_password):
     if not os.path.exists(ENCRYPTED_KNOWN_VALUE_FILE) or not os.path.isfile(ENCRYPTED_KNOWN_VALUE_FILE) or os.path.getsize(ENCRYPTED_KNOWN_VALUE_FILE) == 0:
         raise FileNotFoundError(f"{ENCRYPTED_KNOWN_VALUE_FILE} not found. Please set up a master password first.")
-    
+
     with open(ENCRYPTED_KNOWN_VALUE_FILE, "rb") as f:
         encrypted_known_value = f.read()
-    
+
     key = derive_fernet_key_from_password(plain_password)
     f = Fernet(key)
     try:
