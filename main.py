@@ -656,25 +656,30 @@ class PasswordManagerApp:
         target_window.update_idletasks()
 
         if target_window == self.root:
-            target_window.geometry(f"850x500")
+            self.root.update_idletasks()
+            screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
+            target_window.geometry(f"850x500+{str(x)}+{str(y)}")
             target_window.maxsize(850, 500)
             target_window.minsize(850, 500)
             return
         elif target_window == self.manage_categories_window:
-            target_window.geometry(f"400x400")
+            self.root.update_idletasks()
+            screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
+            target_window.geometry(f"400x400+{str(x)}+{str(y)}")
             target_window.maxsize(400, 400)
             target_window.minsize(400, 400)
             return
         else:
-            window_width = target_window.winfo_reqwidth()
-            window_height = target_window.winfo_reqheight()
-            screen_width = target_window.winfo_screenwidth()
-            screen_height = target_window.winfo_screenheight()
-            window_width += 50
-            window_height += 50
+            self.root.update_idletasks()
+            screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
+            window_width = target_window.winfo_reqwidth() + 50
+            window_height = target_window.winfo_reqheight() + 50
             x = (screen_width / 2) - (window_width / 2)
             y = (screen_height / 2) - (window_height / 2)
-            target_window.geometry(f"{int(window_width)}x{int(window_height)}+{int(x)}+{int(y)}")
+            target_window.geometry(f"{str(window_width)}x{str(window_height)}+{str(x)}+{str(y)}")
 
     def add_placeholder(self, entry, placeholder_text):
         if not isinstance(entry, tkinter.Entry):
@@ -1078,17 +1083,14 @@ class PasswordManagerApp:
 
         change_mode = service_plain is not None and password_plain is not None and self.get_service_content(service_plain) is not None
         original_service_plain = service_plain
-        if change_mode:
-            self.password_setter_window.title("Change Password")
-        else:
-            self.password_setter_window.title("Add Password")
+        self.password_setter_window.title("Add Password" if not change_mode else "Change Password")
         try:
-            if self.window_position:
-                x, y = self.window_position
-                self.password_setter_window.geometry(f"400x500+{x}+{y}")
-            self.password_setter_window.title("Add Password" if not change_mode else "Change Password")
+            self.root.update_idletasks()
+            screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
+            self.password_setter_window.geometry(f"400x500+{str(x)}+{str(y)}")
         except Exception:
-            self.password_setter_window.geometry("400x500")
+            self.password_setter_window.geometry("400x500+0+0")
             pass
 
         # Service
@@ -1236,7 +1238,10 @@ class PasswordManagerApp:
             )
 
         # Set window position
-        self.manage_categories_window.geometry("400x400")
+        self.root.update_idletasks()
+        screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        x, y = (screen_width // 2) - (400 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
+        self.manage_categories_window.geometry(f"400x400+{str(x)}+{str(y)}")
         self.manage_categories_window.maxsize(400, 400)
         self.manage_categories_window.minsize(400, 400)
 
@@ -1316,7 +1321,10 @@ class PasswordManagerApp:
         # Set window
         self.rename_category_window = tkinter.Toplevel(self.root)
         self.rename_category_window.title("Rename Category")
-        self.rename_category_window.geometry("400x200")
+        self.root.update_idletasks()
+        screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        x, y = (screen_width // 2) - (400 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
+        self.rename_category_window.geometry(f"400x200+{str(x)}+{str(y)}")
         self.rename_category_window.maxsize(400, 200)
         self.rename_category_window.minsize(400, 200)
         self.rename_category_window.grab_set()
@@ -1380,7 +1388,10 @@ class PasswordManagerApp:
         # Set window
         self.change_master_password_window = tkinter.Toplevel(self.root)
         self.change_master_password_window.title("Change Master Password")
-        self.change_master_password_window.geometry("300x200")
+        self.root.update_idletasks()
+        screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        x, y = (screen_width // 2) - (400 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
+        self.change_master_password_window.geometry(f"300x200+{str(x)}+{str(y)}")
 
         # Set window close event and open status
         self.change_master_password_window.protocol("WM_DELETE_WINDOW", lambda: self.on_screen_close("change_master_password_window"))
@@ -1580,7 +1591,10 @@ def main():
         root.title("Password Manager")
 
         # Set geometry
-        root.geometry("300x300")
+        root.update_idletasks()
+        screen_width, screen_height = root.winfo_screenwidth(), root.winfo_screenheight()
+        x, y = (screen_width // 2) - (400 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
+        root.geometry(f"300x300+{str(x)}+{str(y)}")
         root.lift()
 
         # Set icon
