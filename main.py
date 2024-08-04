@@ -896,6 +896,10 @@ class PasswordManagerApp:
             self.update_password_display()
 
         def on_search_enter(event):
+            # Perform search on Enter
+            self.current_search_query = self.search_entry.get()
+            self.update_password_display()
+            # Focus on first password view
             try:
                 if self.password_views[0]:
                     self.password_views[0].focus_set()
@@ -931,7 +935,7 @@ class PasswordManagerApp:
         self.add_placeholder(self.search_entry, self.search_entry.placeholder_text)
         self.search_entry.bind("<FocusIn>", self.clear_placeholder)
         self.search_entry.bind("<FocusOut>", self.restore_placeholder)
-        self.search_entry.bind("<KeyRelease>", lambda _: on_search())
+        # self.search_entry.bind("<KeyRelease>", lambda _: on_search())
         self.search_entry.bind("<Return>", on_search_enter)
         self.search_entry.bind("<Tab>", lambda _: sort_dropdown.focus_set())
 
@@ -1526,7 +1530,12 @@ def main():
     # Key binding methods
     def control_f():
         try:
-            app_instance.search_entry.focus_set()
+            # If already focused on search entry, empty search entry
+            if app_instance.search_entry.focus_get() == app_instance.search_entry:
+                app_instance.search_entry.delete(0, tkinter.END)
+                app_instance.search_entry.focus_set()
+            else:
+                app_instance.search_entry.focus_set()
         except:
             pass
     def control_n():
