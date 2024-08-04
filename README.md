@@ -22,11 +22,20 @@ A simple, yet effective password manager built with Python and Tkinter. I built 
 
 
 ## Installation and usage
+I built this password manager for myself, I didn't really have "mainstream" usage in mind so usage is a bit complex:
 1. Ensure Python 3.x is installed on your system.
 2. Clone this repository or download the source code.
    ```sh
    git clone https://github.com/lanlebar/password_manager.git
    ```
+3. Set your salt
+    - Generate salt, e.g.:
+    ```
+    import bcrypt
+    print(bcrypt.gensalt())
+    ```
+    - Replace default salt value with the newly generated one - search for `"<your-salt-here>"` in encryption.py and manual-decryption.py.
+        - Make sure you don't temper with salt afterwards!
 3. Run main.py
    ```sh
    python main.py
