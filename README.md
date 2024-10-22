@@ -3,10 +3,10 @@
 A simple, yet effective password manager built with Python and Tkinter. I built it for myself out of distrust of other password manager software. It utilizes Fernet encryption and follows the master password concept.
 
 ## Features
-- **Secure Password Storage** 
+- **Secure Password Storage**
     - Store service name, passwords, username, email and notes securely for each account.
-    - Organize stored passswords by category. 
-- **Master Password** 
+    - Organize stored passswords by category.
+- **Master Password**
     - Access your vault with a single master password.
     - Master password is setup upon sign up.
     - Can also later be changed.
@@ -23,12 +23,17 @@ A simple, yet effective password manager built with Python and Tkinter. I built 
 
 ## Installation and usage
 I built this password manager for myself, I didn't really have "mainstream" usage in mind so usage is a bit complex:
-1. Ensure Python 3.x is installed on your system.
+1. Ensure Python 3.x and pip are installed on your system.
 2. Clone this repository or download the source code.
    ```sh
    git clone https://github.com/lanlebar/password_manager.git
+   cd password_manager
    ```
-3. Set your salt
+3. Install packages
+   ```sh
+   pip install -r requirements.txt
+   ```
+4. Set your salt
     - Generate salt, e.g.:
     ```
     import bcrypt
@@ -36,9 +41,9 @@ I built this password manager for myself, I didn't really have "mainstream" usag
     ```
     - Replace default salt value with the newly generated one - search for `"<your-salt-here>"` in encryption.py and manual-decryption.py.
         - Make sure you don't temper with salt afterwards!
-3. Run main.py
+5. Run main.py
    ```sh
-   python main.py
+   python3 main.py
    ```
 ## Dependencies
 - `tkinter` for the GUI.

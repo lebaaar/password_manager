@@ -1,11 +1,11 @@
 *.pyc
 *.pyo
 __pycache__/
-venv/
+.venv/
 
 secret.key
 known_value.bin
 vault.json
 categories.json
 settings.json
-password_manager.bat
+password_manager.sh
