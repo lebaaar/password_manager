@@ -1,6 +1,7 @@
 *.pyc
 *.pyo
 __pycache__/
+pmng_venv/*
 
 secret.key
 known_value.bin
