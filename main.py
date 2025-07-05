@@ -93,7 +93,7 @@ class PasswordManagerApp:
         vault_file_path = f"{os.path.dirname(__file__)}/vault.json"
         categories_file_path = f"{os.path.dirname(__file__)}/categories.json"
         settings_file_path = f"{os.path.dirname(__file__)}/settings.json"
-        default_backup_dir_paths = ["C:\\Backups\\password_manager"]
+        default_backup_dir_paths = ["/home/lebar/backups/password_manager"]
         for backup_path in default_backup_dir_paths:
             if not os.path.exists(backup_path):
                 os.makedirs(backup_path)
@@ -659,17 +659,17 @@ class PasswordManagerApp:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
             x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
-            target_window.geometry(f"850x500+{str(x)}+{str(y)}")
-            target_window.maxsize(850, 500)
-            target_window.minsize(850, 500)
+            target_window.geometry(f"950x500+{str(x)}+{str(y)}")
+            target_window.maxsize(950, 500)
+            target_window.minsize(950, 500)
             return
         elif target_window == self.manage_categories_window:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
-            target_window.geometry(f"400x400+{str(x)}+{str(y)}")
-            target_window.maxsize(400, 400)
-            target_window.minsize(400, 400)
+            x, y = (screen_width // 2) - (500 // 2), (screen_height // 2) - (500 // 2)
+            target_window.geometry(f"500x500+{str(x)}+{str(y)}")
+            target_window.maxsize(500, 500)
+            target_window.minsize(500, 500)
             return
         else:
             self.root.update_idletasks()
@@ -1091,10 +1091,10 @@ class PasswordManagerApp:
         try:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
-            self.password_setter_window.geometry(f"400x500+{str(x)}+{str(y)}")
+            x, y = (screen_width // 2) - (500 // 2), (screen_height // 2) - (600 // 2)
+            self.password_setter_window.geometry(f"500x600+{str(x)}+{str(y)}")
         except Exception:
-            self.password_setter_window.geometry("400x500+0+0")
+            self.password_setter_window.geometry("500x600+0+0")
             pass
 
         # Service
@@ -1244,10 +1244,10 @@ class PasswordManagerApp:
         # Set window position
         self.root.update_idletasks()
         screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        x, y = (screen_width // 2) - (400 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
-        self.manage_categories_window.geometry(f"400x400+{str(x)}+{str(y)}")
-        self.manage_categories_window.maxsize(400, 400)
-        self.manage_categories_window.minsize(400, 400)
+        x, y = (screen_width // 2) - (500 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
+        self.manage_categories_window.geometry(f"500x500+{str(x)}+{str(y)}")
+        self.manage_categories_window.maxsize(500, 500)
+        self.manage_categories_window.minsize(500, 500)
 
         # Scrollable frame
         self.c_scroll_frame = ttk.Frame(self.manage_categories_window, height=100)
@@ -1561,17 +1561,26 @@ def main():
             pass
     def scroll(event):
         try:
-            if event.type == tkinter.EventType.MouseWheel:
+            if event.type == tkinter.EventType.KeyPress:
+                if event.keysym == 'Down':
+                    scroll_units = 1
+                elif event.keysym == 'Up':
+                    scroll_units = -1
+                else:
+                    return
+            elif event.type == tkinter.EventType.MouseWheel:  # Windows/MacOS
                 scroll_units = -1 * (event.delta // 120)
-            elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Down':
-                scroll_units = 1
-            elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Up':
-                scroll_units = -1
+            elif event.type == tkinter.EventType.ButtonPress:  # Linux: Button-4 (up) & Button-5 (down)
+                if event.num == 4:
+                    scroll_units = -1
+                elif event.num == 5:
+                    scroll_units = 1
+                else:
+                    return
             else:
                 return
 
             if app_instance.root_window_open:
-                # Check if only main root window is open
                 if not (
                     app_instance.password_setter_window_open or
                     app_instance.manage_categories_window_open or
@@ -1580,14 +1589,24 @@ def main():
                 ) and app_instance.root_scrollbar_visible:
                     app_instance.canvas.yview_scroll(scroll_units, "units")
                     return
+
             if app_instance.manage_categories_window_open:
-                # Check if only manage categories and root window are open
                 if (
                     app_instance.password_setter_window_open and
                     not app_instance.rename_category_window_open and
                     not app_instance.change_master_password_window_open
                 ):
                     app_instance.c_canvas.yview_scroll(scroll_units, "units")
+
+        except:
+            pass
+
+    def select_all(event):
+        try:
+            if event.widget.select_present():
+                event.widget.select_clear()
+            else:
+                event.widget.select_range(0, tkinter.END)
         except:
             pass
 
@@ -1617,6 +1636,21 @@ def main():
         root.bind_all("<MouseWheel>", lambda event: scroll(event))
         root.bind_all("<Down>", lambda event: scroll(event))
         root.bind_all("<Up>", lambda event: scroll(event))
+        root.bind_all("<Button-4>", lambda event: scroll(event))
+        root.bind_all("<Button-5>", lambda event: scroll(event))
+
+        def select_all(event):
+            event.widget.select_range(0, 'end')
+            event.widget.icursor('end')
+            return 'break'
+
+        def select_all_text(event):
+            event.widget.tag_add("sel", "1.0", "end")
+            return "break"
+
+        # Key bindings
+        root.bind_class("TEntry", "<Control-a>", select_all)
+        root.bind_class("TText", "<Control-a>", select_all_text)
 
         root.mainloop()
     except FileExistsError as e:
