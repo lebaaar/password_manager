@@ -8,4 +8,7 @@ known_value.bin
 vault.json
 categories.json
 settings.json
+password_manager.bat
 password_manager.sh
+pmng.bat
+pmng.sh
