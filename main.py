@@ -21,7 +21,7 @@ from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 from tkinter import messagebox
 from ttkthemes import ThemedTk
-import Levenshtein
+from Levenshtein import ratio
 from tendo import singleton
 
 try:
@@ -459,19 +459,18 @@ class PasswordManagerApp:
     # UI management
     def update_password_display(self):
         # Inner functions
-        def levenshtein_fuzzy_search(query, data, max_distance=5):
-            results = {}
-            # Check for Levenshtein distance
-            for key in data.keys():
-                distance = Levenshtein.distance(query, key)
-                if distance <= max_distance:
-                    results[key] = data[key]
+        def levenshtein_fuzzy_search(query, data, threshold=0.7):
+            query_norm = query.lower().strip()
+            results = []
+            for key, value in data.items():
+                key_norm = key.lower().strip()
+                sim = ratio(query_norm, key_norm)
+                if sim >= threshold or query_norm in key_norm:
+                    results.append((key, value, sim))
 
-            # Check if query is in the results
-            for key in data.keys():
-                if query.lower() in key.lower() and key not in results:
-                    results[key] = data[key]
-            return results
+            results.sort(key=lambda x: x[2], reverse=True)
+            return {key: value for key, value, _ in results}
+
 
         def copy_password(password):
             self.root.clipboard_clear()
