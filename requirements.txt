@@ -1,0 +1,10 @@
+bcrypt==4.2.0
+cffi==1.17.1
+cryptography==43.0.3
+Levenshtein==0.26.0
+pillow==11.0.0
+pycparser==2.22
+RapidFuzz==3.10.0
+six==1.16.0
+tendo==0.3.0
+ttkthemes==3.2.2

@@ -1,21 +1,8 @@
-import subprocess
 import os
 import shutil
 import sys
 import json
 import time
-
-def install_and_import(package):
-    try:
-        __import__(package)
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        __import__(package)
-
-packages = ["bcrypt", "cryptography", "tkinter", "Levenshtein", "tendo", "ttkthemes"]
-for package in packages:
-    install_and_import(package)
-
 import tkinter
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
