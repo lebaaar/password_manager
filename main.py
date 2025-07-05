@@ -21,7 +21,7 @@ from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 from tkinter import messagebox
 from ttkthemes import ThemedTk
-import Levenshtein
+from Levenshtein import ratio
 from tendo import singleton
 
 try:
@@ -460,22 +460,15 @@ class PasswordManagerApp:
     def update_password_display(self):
         # Inner functions
         def levenshtein_fuzzy_search(query, data, threshold=0.7):
-            from Levenshtein import ratio
-
             query_norm = query.lower().strip()
             results = []
-
             for key, value in data.items():
                 key_norm = key.lower().strip()
                 sim = ratio(query_norm, key_norm)
-
                 if sim >= threshold or query_norm in key_norm:
                     results.append((key, value, sim))
 
-            # Sort by similarity score descending
             results.sort(key=lambda x: x[2], reverse=True)
-
-            # Return as dict without similarity score
             return {key: value for key, value, _ in results}
 
 
