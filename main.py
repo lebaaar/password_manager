@@ -1,21 +1,8 @@
-import subprocess
 import os
 import shutil
 import sys
 import json
 import time
-
-def install_and_import(package):
-    try:
-        __import__(package)
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        __import__(package)
-
-packages = ["bcrypt", "cryptography", "tkinter", "Levenshtein", "tendo", "ttkthemes"]
-for package in packages:
-    install_and_import(package)
-
 import tkinter
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
@@ -658,17 +645,17 @@ class PasswordManagerApp:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
             x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
-            target_window.geometry(f"950x500+{str(x)}+{str(y)}")
-            target_window.maxsize(950, 500)
-            target_window.minsize(950, 500)
+            target_window.geometry(f"850x500+{str(x)}+{str(y)}")
+            target_window.maxsize(850, 500)
+            target_window.minsize(850, 500)
             return
         elif target_window == self.manage_categories_window:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-            x, y = (screen_width // 2) - (500 // 2), (screen_height // 2) - (500 // 2)
-            target_window.geometry(f"500x500+{str(x)}+{str(y)}")
-            target_window.maxsize(500, 500)
-            target_window.minsize(500, 500)
+            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
+            target_window.geometry(f"400x400+{str(x)}+{str(y)}")
+            target_window.maxsize(400, 400)
+            target_window.minsize(400, 400)
             return
         else:
             self.root.update_idletasks()
@@ -793,9 +780,26 @@ class PasswordManagerApp:
         if account_exists:
             # Display login screen
             ttk.Label(self.root, text="Master Password:").pack(pady=10)
-            self.password_entry = ttk.Entry(self.root, show="*")
-            self.password_entry.pack(pady=5)
+
+            password_frame = ttk.Frame(self.root)
+            password_frame.pack(pady=5)
+
+            self.password_entry = ttk.Entry(password_frame, width=20, show="*")
+            self.password_entry.pack(side="left", padx=2)
             self.password_entry.focus_set()
+
+            show_password_button = ttk.Button(password_frame, text="Show", width=6)
+            show_password_button.pack(side="left", padx=2)
+
+            def toggle_login_password_visibility():
+                if self.password_entry.cget("show") == "*":
+                    self.password_entry.config(show="")
+                    show_password_button.config(text="Hide")
+                else:
+                    self.password_entry.config(show="*")
+                    show_password_button.config(text="Show")
+
+            show_password_button.config(command=toggle_login_password_visibility)
 
             # Login button
             login_button = ttk.Button(self.root, text="Login", command= lambda: self.login(store_key=secret_key_exists))
@@ -1090,10 +1094,10 @@ class PasswordManagerApp:
         try:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-            x, y = (screen_width // 2) - (500 // 2), (screen_height // 2) - (600 // 2)
-            self.password_setter_window.geometry(f"500x600+{str(x)}+{str(y)}")
+            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
+            self.password_setter_window.geometry(f"400x500+{str(x)}+{str(y)}")
         except Exception:
-            self.password_setter_window.geometry("500x600+0+0")
+            self.password_setter_window.geometry("400x500+0+0")
             pass
 
         # Service
@@ -1107,12 +1111,27 @@ class PasswordManagerApp:
 
         # Password
         ttk.Label(self.password_setter_window, text="Password*:").pack(pady=1)
-        password_entry = ttk.Entry(self.password_setter_window, width=50)
-        password_entry.pack(pady=5)
+        password_frame = ttk.Frame(self.password_setter_window)
+        password_frame.pack(pady=5)
+        
+        password_entry = ttk.Entry(password_frame, width=45, show="*")
+        password_entry.pack(side="left", padx=2)
         password_entry.bind("<Return>", lambda _: submit_content())
         if password_plain:
             password_entry.insert(0, password_plain)
-        password_entry.bind("<Return>", lambda _: submit_content())
+        
+        show_password_button = ttk.Button(password_frame, text="Show", width=6)
+        show_password_button.pack(side="left", padx=2)
+        
+        def toggle_password_visibility():
+            if password_entry.cget("show") == "*":
+                password_entry.config(show="")
+                show_password_button.config(text="Hide")
+            else:
+                password_entry.config(show="*")
+                show_password_button.config(text="Show")
+        
+        show_password_button.config(command=toggle_password_visibility)
 
         # Username
         ttk.Label(self.password_setter_window, text="Username:").pack(pady=1)
@@ -1243,10 +1262,10 @@ class PasswordManagerApp:
         # Set window position
         self.root.update_idletasks()
         screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        x, y = (screen_width // 2) - (500 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
-        self.manage_categories_window.geometry(f"500x500+{str(x)}+{str(y)}")
-        self.manage_categories_window.maxsize(500, 500)
-        self.manage_categories_window.minsize(500, 500)
+        x, y = (screen_width // 2) - (400 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
+        self.manage_categories_window.geometry(f"400x400+{str(x)}+{str(y)}")
+        self.manage_categories_window.maxsize(400, 400)
+        self.manage_categories_window.minsize(400, 400)
 
         # Scrollable frame
         self.c_scroll_frame = ttk.Frame(self.manage_categories_window, height=100)
@@ -1476,30 +1495,81 @@ class PasswordManagerApp:
             self.key = new_key
             self.change_master_password_window.destroy()
 
-        old_password_entry = ttk.Entry(self.change_master_password_window, width=40)
+        # Old master password
+        old_password_frame = ttk.Frame(self.change_master_password_window)
+        old_password_frame.pack(pady=5)
+        
+        old_password_entry = ttk.Entry(old_password_frame, width=35, show="*")
         old_password_entry.placeholder_text = "Old master password"
+        old_password_entry.pack(side="left", padx=2)
         self.add_placeholder(old_password_entry, old_password_entry.placeholder_text)
         old_password_entry.bind("<FocusIn>", self.clear_placeholder)
         old_password_entry.bind("<FocusOut>", self.restore_placeholder)
         old_password_entry.bind("<Return>", lambda _: new_password_entry.focus_set())
-        old_password_entry.pack(pady=5)
         old_password_entry.focus_set()
+        
+        show_old_password_button = ttk.Button(old_password_frame, text="Show", width=6)
+        show_old_password_button.pack(side="left", padx=2)
+        
+        def toggle_old_password_visibility():
+            if old_password_entry.cget("show") == "*":
+                old_password_entry.config(show="")
+                show_old_password_button.config(text="Hide")
+            else:
+                old_password_entry.config(show="*")
+                show_old_password_button.config(text="Show")
+        
+        show_old_password_button.config(command=toggle_old_password_visibility)
 
-        new_password_entry = ttk.Entry(self.change_master_password_window, width=40)
+        # New master password
+        new_password_frame = ttk.Frame(self.change_master_password_window)
+        new_password_frame.pack(pady=5)
+        
+        new_password_entry = ttk.Entry(new_password_frame, width=35, show="*")
         new_password_entry.placeholder_text = "New master password"
+        new_password_entry.pack(side="left", padx=2)
         self.add_placeholder(new_password_entry, new_password_entry.placeholder_text)
         new_password_entry.bind("<FocusIn>", self.clear_placeholder)
         new_password_entry.bind("<FocusOut>", self.restore_placeholder)
         new_password_entry.bind("<Return>", lambda _: confirm_password_entry.focus_set())
-        new_password_entry.pack(pady=5)
+        
+        show_new_password_button = ttk.Button(new_password_frame, text="Show", width=6)
+        show_new_password_button.pack(side="left", padx=2)
+        
+        def toggle_new_password_visibility():
+            if new_password_entry.cget("show") == "*":
+                new_password_entry.config(show="")
+                show_new_password_button.config(text="Hide")
+            else:
+                new_password_entry.config(show="*")
+                show_new_password_button.config(text="Show")
+        
+        show_new_password_button.config(command=toggle_new_password_visibility)
 
-        confirm_password_entry = ttk.Entry(self.change_master_password_window, width=40)
+        # Confirm new master password
+        confirm_password_frame = ttk.Frame(self.change_master_password_window)
+        confirm_password_frame.pack(pady=5)
+        
+        confirm_password_entry = ttk.Entry(confirm_password_frame, width=35, show="*")
         confirm_password_entry.placeholder_text = "Confirm new master password"
+        confirm_password_entry.pack(side="left", padx=2)
         self.add_placeholder(confirm_password_entry, confirm_password_entry.placeholder_text)
         confirm_password_entry.bind("<FocusIn>", self.clear_placeholder)
         confirm_password_entry.bind("<FocusOut>", self.restore_placeholder)
-        confirm_password_entry.pack(pady=5)
         confirm_password_entry.bind("<Return>", lambda _: change_master_password())
+        
+        show_confirm_password_button = ttk.Button(confirm_password_frame, text="Show", width=6)
+        show_confirm_password_button.pack(side="left", padx=2)
+        
+        def toggle_confirm_password_visibility():
+            if confirm_password_entry.cget("show") == "*":
+                confirm_password_entry.config(show="")
+                show_confirm_password_button.config(text="Hide")
+            else:
+                confirm_password_entry.config(show="*")
+                show_confirm_password_button.config(text="Show")
+        
+        show_confirm_password_button.config(command=toggle_confirm_password_visibility)
 
         change_password_button = ttk.Button(self.change_master_password_window, text="Change Master Password", command=change_master_password)
         change_password_button.pack(pady=10)
@@ -1560,26 +1630,17 @@ def main():
             pass
     def scroll(event):
         try:
-            if event.type == tkinter.EventType.KeyPress:
-                if event.keysym == 'Down':
-                    scroll_units = 1
-                elif event.keysym == 'Up':
-                    scroll_units = -1
-                else:
-                    return
-            elif event.type == tkinter.EventType.MouseWheel:  # Windows/MacOS
+            if event.type == tkinter.EventType.MouseWheel:
                 scroll_units = -1 * (event.delta // 120)
-            elif event.type == tkinter.EventType.ButtonPress:  # Linux: Button-4 (up) & Button-5 (down)
-                if event.num == 4:
-                    scroll_units = -1
-                elif event.num == 5:
-                    scroll_units = 1
-                else:
-                    return
+            elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Down':
+                scroll_units = 1
+            elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Up':
+                scroll_units = -1
             else:
                 return
 
             if app_instance.root_window_open:
+                # Check if only main root window is open
                 if not (
                     app_instance.password_setter_window_open or
                     app_instance.manage_categories_window_open or
@@ -1588,24 +1649,14 @@ def main():
                 ) and app_instance.root_scrollbar_visible:
                     app_instance.canvas.yview_scroll(scroll_units, "units")
                     return
-
             if app_instance.manage_categories_window_open:
+                # Check if only manage categories and root window are open
                 if (
                     app_instance.password_setter_window_open and
                     not app_instance.rename_category_window_open and
                     not app_instance.change_master_password_window_open
                 ):
                     app_instance.c_canvas.yview_scroll(scroll_units, "units")
-
-        except:
-            pass
-
-    def select_all(event):
-        try:
-            if event.widget.select_present():
-                event.widget.select_clear()
-            else:
-                event.widget.select_range(0, tkinter.END)
         except:
             pass
 
@@ -1635,21 +1686,6 @@ def main():
         root.bind_all("<MouseWheel>", lambda event: scroll(event))
         root.bind_all("<Down>", lambda event: scroll(event))
         root.bind_all("<Up>", lambda event: scroll(event))
-        root.bind_all("<Button-4>", lambda event: scroll(event))
-        root.bind_all("<Button-5>", lambda event: scroll(event))
-
-        def select_all(event):
-            event.widget.select_range(0, 'end')
-            event.widget.icursor('end')
-            return 'break'
-
-        def select_all_text(event):
-            event.widget.tag_add("sel", "1.0", "end")
-            return "break"
-
-        # Key bindings
-        root.bind_class("TEntry", "<Control-a>", select_all)
-        root.bind_class("TText", "<Control-a>", select_all_text)
 
         root.mainloop()
     except FileExistsError as e:
