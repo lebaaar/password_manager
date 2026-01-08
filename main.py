@@ -645,17 +645,17 @@ class PasswordManagerApp:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
             x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
-            target_window.geometry(f"850x500+{str(x)}+{str(y)}")
-            target_window.maxsize(850, 500)
-            target_window.minsize(850, 500)
+            target_window.geometry(f"950x500+{str(x)}+{str(y)}")
+            target_window.maxsize(950, 500)
+            target_window.minsize(950, 500)
             return
         elif target_window == self.manage_categories_window:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
             x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
             target_window.geometry(f"400x400+{str(x)}+{str(y)}")
-            target_window.maxsize(400, 400)
-            target_window.minsize(400, 400)
+            target_window.maxsize(500, 400)
+            target_window.minsize(500, 400)
             return
         else:
             self.root.update_idletasks()
@@ -1094,10 +1094,10 @@ class PasswordManagerApp:
         try:
             self.root.update_idletasks()
             screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-            x, y = (screen_width // 2) - (400 // 2), (screen_height // 2) - (500 // 2)
-            self.password_setter_window.geometry(f"400x500+{str(x)}+{str(y)}")
+            x, y = (screen_width // 2) - (500 // 2), (screen_height // 2) - (600 // 2)
+            self.password_setter_window.geometry(f"500x600+{str(x)}+{str(y)}")
         except Exception:
-            self.password_setter_window.geometry("400x500+0+0")
+            self.password_setter_window.geometry("500x600+0+0")
             pass
 
         # Service
@@ -1262,11 +1262,11 @@ class PasswordManagerApp:
         # Set window position
         self.root.update_idletasks()
         screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        x, y = (screen_width // 2) - (400 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
-        self.manage_categories_window.geometry(f"400x400+{str(x)}+{str(y)}")
-        self.manage_categories_window.maxsize(400, 400)
-        self.manage_categories_window.minsize(400, 400)
-
+        x, y = (screen_width // 2) - (500 // 2) + 30, (screen_height // 2) - (500 // 2) + 30
+        self.manage_categories_window.geometry(f"500x500+{str(x)}+{str(y)}")
+        self.manage_categories_window.maxsize(500, 500)
+        self.manage_categories_window.minsize(500, 500)
+        
         # Scrollable frame
         self.c_scroll_frame = ttk.Frame(self.manage_categories_window, height=100)
         self.c_scroll_frame.pack(fill="x", side="top")
