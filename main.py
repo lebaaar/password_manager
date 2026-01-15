@@ -80,7 +80,7 @@ class PasswordManagerApp:
         vault_file_path = f"{os.path.dirname(__file__)}/vault.json"
         categories_file_path = f"{os.path.dirname(__file__)}/categories.json"
         settings_file_path = f"{os.path.dirname(__file__)}/settings.json"
-        default_backup_dir_paths = ["/home/lebar/backups/password_manager"]
+        default_backup_dir_paths = [f"{os.path.dirname(__file__)}/backups"]
         for backup_path in default_backup_dir_paths:
             if not os.path.exists(backup_path):
                 os.makedirs(backup_path)
