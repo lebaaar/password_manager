@@ -33,11 +33,6 @@ A simple, yet effective password manager built with Python and Tkinter. I built 
    python3 main.py
    ```
 5. Optionally set the backup path(s) - `backup_dir_paths` array in `settings.json`
-## Dependencies
-- `tkinter` for the GUI.
-- `cryptography` for encryption and decryption.
-- `Levenshtein` for the search algorithm
-
 
 ## Keyboard shortcuts
    - `Ctrl + N`: Add new password
