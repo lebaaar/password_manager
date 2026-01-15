@@ -1629,8 +1629,13 @@ def main():
             pass
     def scroll(event):
         try:
+            # Handle mousewheel events (Windows/macOS: MouseWheel, Linux: Button-4/Button-5)
             if event.type == tkinter.EventType.MouseWheel:
                 scroll_units = -1 * (event.delta // 120)
+            elif event.num == 4:  # scroll up
+                scroll_units = -3
+            elif event.num == 5:  # scroll down
+                scroll_units = 3
             elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Down':
                 scroll_units = 1
             elif event.type == tkinter.EventType.KeyPress and event.keysym == 'Up':
@@ -1683,6 +1688,8 @@ def main():
         for i in range(10):
             root.bind(f"{i}", lambda e, i=i: focus_password_view(i))
         root.bind_all("<MouseWheel>", lambda event: scroll(event))
+        root.bind_all("<Button-4>", lambda event: scroll(event))  # Linux scroll up
+        root.bind_all("<Button-5>", lambda event: scroll(event))  # Linux scroll down
         root.bind_all("<Down>", lambda event: scroll(event))
         root.bind_all("<Up>", lambda event: scroll(event))
 
