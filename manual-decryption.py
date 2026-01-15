@@ -8,7 +8,7 @@ def derive_fernet_key_from_password(plain_password):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"<your-salt-here>",
+        salt=b"",
         iterations=100000,
         backend=default_backend()
     )

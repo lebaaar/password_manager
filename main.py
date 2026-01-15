@@ -130,7 +130,6 @@ class PasswordManagerApp:
             Backup: vault.json, categories.json, settings.json
             If master password is remebmered by the user, he can manually derive encryption key from it and use it to decrypt the files
             Method to derive encryption key from master password is in encryption.py
-            Salt used is hardcoded in encryption.py
         """
         settings = self.get_settings()
         backup_dir_paths = settings["backup_dir_paths"]

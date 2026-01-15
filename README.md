@@ -33,14 +33,6 @@ I built this password manager for myself, I didn't really have "mainstream" usag
    ```sh
    pip install -r requirements.txt
    ```
-4. Set your salt
-    - Generate salt, e.g.:
-    ```
-    import bcrypt
-    print(bcrypt.gensalt())
-    ```
-    - Replace default salt value with the newly generated one - search for `"<your-salt-here>"` in encryption.py and manual-decryption.py.
-        - Make sure you don't temper with salt afterwards!
 5. Run main.py
    ```sh
    python3 main.py
