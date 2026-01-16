@@ -8,6 +8,7 @@ A simple, yet effective password manager built with Python and Tkinter. I built 
 - Organize stored passwords by category.
 - Sort, filter, and search through stored passwords.
 - Quickly copy passwords to the clipboard.
+
 **Security**
 - Access your vault with a single master password.
 - Secure storage using Fernet encryption.
@@ -15,7 +16,6 @@ A simple, yet effective password manager built with Python and Tkinter. I built 
 - Choose whether the encryption key is stored on your device:
   - *Stored:* Less secure, but allows for manual decryption if you forget the master password.
   - *Not stored:* More secure, but you will lose all your data if you lose your the master password.
-
 
 ## Installation and usage
 1. Ensure Python 3.x and pip are installed on your system.
